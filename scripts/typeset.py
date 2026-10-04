@@ -1,0 +1,403 @@
+#!/usr/bin/env python
+"""anime-typeset CLI.
+
+  doctor                                   check ffmpeg/libass and python packages
+  analyze  --video V --signs S --work DIR  cuts, motion, card detection, sheets, draft DIR/episode.json
+  build    -c episode.json [ids..]         build items -> DIR/lines/<id>.json + DIR/check/<id>.jpg
+  check    -c episode.json [ids..]         re-render check sheets (--frames a,b,c  --full)
+  assemble -c episode.json                write the signs .ass (cfg "out")
+  preview  -c episode.json [ids..]         mp4 of every sign with the assembled script (cfg "preview")
+  merge    -c episode.json                 put the signs into the dialogue script (cfg "subs"), replacing old signs
+  grid     --video V --frames 100:160:6 [--crop x0,y0,x1,y1] --out f.jpg     frames side by side
+  ruler    --video V --frames a:b --box x0,y0,x1,y1 --out f.png [--std]      median crop with px rulers
+  geom     -c episode.json --frames a:b --box x0,y0,x1,y1 [--no-title]       card geometry for a box
+  fonts    [--cyr] [--grep text]                                            installed fonts
+  fonts    -c episode.json --try "A,B,C" --frame N --text T --pos x,base --em 60 [--colour --outline --bord --tags --crop] --out f.jpg
+                                                                           candidate faces rendered over a frame
+  track    -c episode.json --frames a:b --roi x,y,w,h [--roi ...]          background track per ROI (2D / x / y), no build
+  probe    -c episode.json --frames a:b --box x0,y0,x1,y1 [--bg box]       glyph vs background stats -> detect thresholds
+  set      -c episode.json id.key=value [@top=value ...] [--from patch.json] edit the config (JSON values; empty = remove)
+  split    -c episode.json id                                             one item per card
+  sheet    -c episode.json [ids..] [--out f.jpg]                          middle frame of every built item on one image
+  compact  file.ass [file.ass ...]                                        shrink built signs/subs in place, same picture
+  (check also takes --zoom x0,y0,x1,y1 and --compare: original | result | difference)
+"""
+import argparse, json, os, sys, time, subprocess
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+for _s in (sys.stdout, sys.stderr):   # never die on console encoding (cp1251/cp866 pipes)
+    try:
+        _s.reconfigure(errors="replace")
+    except Exception:
+        pass
+
+
+def frames_arg(s):
+    if not s:
+        return None
+    out = []
+    for part in s.split(","):
+        if ":" in part:
+            p = [int(x) for x in part.split(":")]
+            out += list(range(p[0], p[1] + 1, p[2] if len(p) > 2 else 1))
+        else:
+            out.append(int(part))
+    return out
+
+
+def box_arg(s):
+    return [int(float(x)) for x in s.split(",")] if s else None
+
+
+def cfg_path(ctx, key, default=None):
+    p = ctx.cfg.get(key) or default
+    if not p or p == "TODO":
+        return None
+    return p if os.path.isabs(p) else os.path.join(ctx.work, p)
+
+
+def item_ass(ctx, it):
+    from tslib.assdoc import header, write_lines, ev_style
+    from tslib.text import parse_style
+    data = ctx.load_lines(it["id"])
+    lines = data["lines"]
+    used = {ev_style(l) for l in lines}
+    # all styles: lines kept from the translator's file use its styles (alignment, margins, fonts)
+    styles = [l for l in ctx.all_style_lines if parse_style(l)["Name"] in used]
+    p = ctx.path("check", f"_{it['id']}.ass")
+    write_lines(p, header(it["id"], ctx.playres, ctx.video.ycbcr, styles) + lines)
+    return p
+
+
+def cmd_doctor(a):
+    ok = True
+    try:
+        out = subprocess.run(["ffmpeg", "-hide_banner", "-filters"], capture_output=True, text=True).stdout
+        has = " subtitles " in out
+        print(f"ffmpeg: found, subtitles(libass) filter: {'yes' if has else 'NO'}"); ok &= has
+    except FileNotFoundError:
+        print("ffmpeg: NOT FOUND in PATH"); ok = False
+    for mod, pip in (("numpy", "numpy"), ("cv2", "opencv-python"), ("PIL", "pillow"), ("fontTools", "fonttools")):
+        try:
+            m = __import__(mod); print(f"{mod}: {getattr(m, '__version__', 'ok')}")
+        except ImportError:
+            print(f"{mod}: MISSING  ->  pip install {pip}"); ok = False
+    print("OK" if ok else "fix the items above")
+
+
+def cmd_analyze(a):
+    from tslib import analyze
+    os.makedirs(a.work, exist_ok=True)
+    p = analyze.run(a.video, a.signs, a.work, force=a.force)
+    print(f"draft config: {p}\nsheets: {os.path.join(a.work, 'analysis')}\nsummary: {os.path.join(a.work, 'analysis.md')}")
+
+
+# relative build time per frame (measured on BC ep1, 4K source): ECC-tracked plates ~1.4 s/frame,
+# moving cards ~0.35-0.7, static cards ~0.3 (per card), follow ~0.05
+COST = {"affine": 4.5, "linear": 1.8, "path": 1.0, "static": 1.0, "follow": 0.2, "text": 0.05}
+
+
+def _cost(it):
+    """estimated build time, so the longest items start first (the slowest one sets the wall clock)"""
+    m = it.get("motion", "static")
+    m = m.get("mode", "static") if isinstance(m, dict) else m
+    n = it["frames"][1] - it["frames"][0] + 1
+    w = COST.get(it["type"], 1.0) if m == "static" else COST.get(m, 1.0)
+    return n * w * max(1, len(it.get("cards", [1])))
+
+
+def _build_one(job):
+    """one item in a worker process; returns (id, log text)"""
+    cfg, iid, no_check = job
+    import io, contextlib, traceback
+    buf = io.StringIO()
+    with contextlib.redirect_stdout(buf):
+        try:
+            from tslib.ctx import Ctx
+            from tslib.builders import build_item
+            from tslib.inspect import check_sheet
+            ctx = Ctx(cfg)
+            it = next(i for i in ctx.items() if i["id"] == iid)
+            t = time.time()
+            print(f"[{iid}] {it['type']} frames {it['frames'][0]}-{it['frames'][1]}")
+            data = build_item(ctx, it)
+            data["frames"] = it["frames"]
+            ctx.save_lines(iid, data)
+            print(f"    {len(data['lines'])} lines, {sum(len(l) for l in data['lines']) // 1024} KB, {time.time() - t:.0f}s")
+            if not no_check:
+                print(f"    check: {check_sheet(ctx, it, item_ass(ctx, it), ctx.path('check', f'{iid}.jpg'))}")
+        except SystemExit as e:
+            print(f"[{iid}] ERROR: {e}")
+        except Exception:
+            print(f"[{iid}] ERROR:\n{traceback.format_exc()}")
+    return iid, buf.getvalue()
+
+
+def cmd_build(a):
+    from tslib.ctx import Ctx
+    from concurrent.futures import ProcessPoolExecutor, as_completed
+    ctx = Ctx(a.config)
+    its = sorted(ctx.items(a.ids), key=_cost, reverse=True)      # heavy items first: better packing
+    jobs = [(ctx.cfg_path, it["id"], a.no_check) for it in its]
+    n = max(1, min(a.jobs or 4, len(jobs)))
+    t0 = time.time()
+    if n == 1:
+        for j in jobs:
+            print(_build_one(j)[1], end="", flush=True)
+    else:
+        print(f"building {len(jobs)} items in {n} parallel workers (heaviest first)...", flush=True)
+        with ProcessPoolExecutor(n) as ex:
+            for fut in as_completed([ex.submit(_build_one, j) for j in jobs]):
+                print(fut.result()[1], end="", flush=True)
+    print(f"done in {time.time() - t0:.0f}s")
+
+
+def cmd_check(a):
+    from tslib.ctx import Ctx
+    from tslib.inspect import check_sheet
+    ctx = Ctx(a.config)
+    for it in ctx.items(a.ids):
+        if ctx.load_lines(it["id"]) is None:
+            print(f"[{it['id']}] not built"); continue
+        suffix = ""
+        if a.compare:
+            suffix += "_cmp"
+        if a.zoom:
+            suffix += "_zoom"
+        out = check_sheet(ctx, it, item_ass(ctx, it), ctx.path("check", f"{it['id']}{suffix}.jpg"),
+                          frames=frames_arg(a.frames), full=a.full, zoom=box_arg(a.zoom), compare=a.compare)
+        print(out)
+
+
+def cmd_assemble(a):
+    from tslib.ctx import Ctx
+    from tslib.assdoc import assemble
+    ctx = Ctx(a.config)
+    out = a.out or cfg_path(ctx, "out")
+    if not out:
+        raise SystemExit("set 'out' in episode.json or pass --out")
+    n = assemble(ctx, out)
+    print(f"{n} events -> {out} ({os.path.getsize(out) // 1024} KB)")
+
+
+def cmd_preview(a):
+    from tslib.ctx import Ctx
+    ctx = Ctx(a.config)
+    ass = a.ass or cfg_path(ctx, "out")
+    out = a.out or cfg_path(ctx, "preview") or ctx.path("preview.mp4")
+    pad = int(round(float(ctx.video.fps) * 0.4))
+    rs = sorted((max(0, i["frames"][0] - pad), i["frames"][1] + pad) for i in ctx.items(a.ids))
+    merged = []
+    for r in rs:
+        if merged and r[0] <= merged[-1][1] + int(float(ctx.video.fps) * 2):
+            merged[-1] = (merged[-1][0], max(merged[-1][1], r[1]))
+        else:
+            merged.append(r)
+    ctx.video.preview(ass, merged, out, ctx.path("cache"))
+    print(out)
+
+
+def cmd_merge(a):
+    from tslib.ctx import Ctx
+    from tslib.assdoc import merge
+    ctx = Ctx(a.config)
+    subs = a.subs or cfg_path(ctx, "subs")
+    signs = a.signs or cfg_path(ctx, "out")
+    if not subs or not signs:
+        raise SystemExit("need 'subs' and 'out' in episode.json (or --subs/--signs)")
+    drop = a.drop_styles.split(",") if a.drop_styles else (ctx.cfg.get("merge_drop_styles") or [])
+    # only the translator lines of the signs we actually replaced; the rest stay in the subs untouched
+    built = [i for i in ctx.items() if ctx.load_lines(i["id"]) is not None]
+    if any("source_lines" in i for i in ctx.cfg["items"]):
+        src = [l for i in built for l in i.get("source_lines", [])]
+    else:   # older configs without per-item source lines: the whole source file
+        src = ctx.cfg.get("source_events") or cfg_path(ctx, "source_signs")
+    r = merge(signs, subs, ctx.video.ycbcr, source_signs=src, drop_styles=drop)
+    print(f"removed {r['removed']} old sign lines (same as in the signs file / previous merge"
+          + (f" / styles {drop}" if drop else "") + f"); inserted {r['inserted']} lines in {r['blocks']} blocks"
+          + (f"; unused styles removed {r['styles_removed']}" if r["styles_removed"] else "")
+          + (f"; dialogue layers +{r['dialogue_bump']}" if r["dialogue_bump"] else "") + (f"; backup {r['backup']}" if r["backup"] else ""))
+    ok = r["dialogue_before"] == r["dialogue_after"]
+    print(f"dialogue lines: {r['dialogue_before']} -> {r['dialogue_after']}" + ("  OK" if ok else "  <-- CHANGED, check the subs!"))
+
+
+def _video(a):
+    """inspection commands need only the video: no preset / styles (works on a fresh analyze draft)"""
+    from tslib.video import Video
+    if a.video:
+        return Video(a.video)
+    if not a.config:
+        raise SystemExit("give --video or -c episode.json")
+    cfg = json.load(open(a.config, encoding="utf-8"))
+    p = cfg["video"]
+    return Video(p if os.path.isabs(p) else os.path.join(os.path.dirname(os.path.abspath(a.config)), p))
+
+
+def cmd_grid(a):
+    from tslib.inspect import grid
+    print(grid(_video(a), frames_arg(a.frames), a.out, crop=box_arg(a.crop), cols=a.cols, width=a.width))
+
+
+def cmd_ruler(a):
+    import numpy as np
+    from tslib.inspect import ruler
+    v = _video(a)
+    fr = frames_arg(a.frames)
+    G = v.grab(fr[0], fr[-1] - fr[0] + 1, step=max(1, (fr[-1] - fr[0] + 1) // 40)).astype(np.float32)
+    med = np.median(G, axis=0)
+    std = G.std(axis=0).mean(axis=2) if a.std else None
+    print(ruler(med, box_arg(a.box), a.out, scale=a.scale, std=std))
+
+
+def cmd_geom(a):
+    from tslib.ctx import Ctx
+    from tslib.cards import card_geom, zones_from_geom
+    ctx = Ctx(a.config)
+    fr = frames_arg(a.frames)
+    try:
+        g = card_geom(ctx.median(fr[0], fr[-1]), box_arg(a.box), not a.no_title)
+    except Exception as e:
+        raise SystemExit(f"card geometry not found in {a.box} ({type(e).__name__}): light background or the box misses "
+                         "the card. Measure with `ruler` and give geom_only + geom {cx, line, underline, L, R, fl_in, fr_in}"
+                         " + zones + glow_box by hand.")
+    print(json.dumps({k: round(v, 1) for k, v in g.items()}, ensure_ascii=False))
+    print("zones:", zones_from_geom(g))
+
+
+def cmd_fonts(a):
+    from tslib import fonts
+    if a.try_:
+        from tslib.tools import try_fonts
+        if not (a.frame is not None and a.text and a.pos and a.out):
+            raise SystemExit("--try needs --frame, --text, --pos x,base and --out")
+        x, b = [float(v) for v in a.pos.split(",")]
+        print(try_fonts(_video(a), a.frame, a.text, [f.strip() for f in a.try_.split(",") if f.strip()], a.out,
+                        pos=(x, b), em=a.em, colour=a.colour, outline=a.outline, bord=a.bord, tags=a.tags or "",
+                        crop=box_arg(a.crop)))
+        return
+    seen = set()
+    for r in sorted(fonts.index(), key=lambda r: (r["family"].lower(), r["sub"])):
+        if a.cyr and not r["cyr"]:
+            continue
+        key = (r["family"], r["sub"])
+        if key in seen or (a.grep and a.grep.lower() not in (r["family"] + r["sub"] + r["path"]).lower()):
+            continue
+        seen.add(key)
+        print(f"{r['family']} | {r['sub']} | {'cyr' if r['cyr'] else '   '} | {os.path.basename(r['path'])}")
+
+
+def cmd_track(a):
+    from tslib.tools import track_report
+    v = _video(a)
+    fr = frames_arg(a.frames)
+    track_report(v, fr[0], fr[-1], [box_arg(r) for r in a.roi], scales=tuple(a.scale or [0.5, 1.0]))
+
+
+def cmd_probe(a):
+    import numpy as np
+    from tslib.tools import probe
+    v = _video(a)
+    fr = frames_arg(a.frames)
+    G = v.grab(fr[0], fr[-1] - fr[0] + 1, step=max(1, (fr[-1] - fr[0] + 1) // 20)).astype(np.float32)
+    probe(np.median(G, axis=0), box_arg(a.box), box_arg(a.bg))
+
+
+def cmd_set(a):
+    from tslib.tools import set_values
+    if not a.assign and not a.from_:
+        raise SystemExit("nothing to set: give id.key=value pairs and/or --from patch.json")
+    set_values(a.config, a.assign, a.from_)
+
+
+def cmd_split(a):
+    from tslib.tools import split_item
+    split_item(a.config, a.id)
+
+
+def cmd_sheet(a):
+    from tslib.ctx import Ctx
+    from tslib.tools import contact_sheet
+    ctx = Ctx(a.config)
+    print(contact_sheet(ctx, item_ass, a.out or ctx.path("check", "sheet.jpg"), a.ids or None))
+
+
+def cmd_compact(a):
+    """shrink an already built signs/subs .ass in place (the original is kept once as исходники/<name> (до сжатия))"""
+    import shutil
+    from tslib import coords
+    from tslib.ctx import read_playres
+    from tslib.compact import compact_lines
+    from tslib.assdoc import backup_path
+    for path in a.files:
+        coords.set_playres(read_playres(path)[0])
+        with open(path, encoding="utf-8-sig") as fh:
+            src = fh.read()
+        nl = "\r\n" if "\r\n" in src else "\n"
+        lines = src.split(nl)
+        out = compact_lines(lines)
+        before = os.path.getsize(path)
+        b = backup_path(path, " (до сжатия)")
+        if not os.path.exists(b):
+            os.makedirs(os.path.dirname(b), exist_ok=True)
+            shutil.copy2(path, b)
+        with open(path, "w", encoding="utf-8-sig", newline="") as fh:
+            fh.write(nl.join(out))
+        print(f"{path}: {before / 1024:.0f} KB -> {os.path.getsize(path) / 1024:.0f} KB, "
+              f"{len(lines) - len(out)} empty lines dropped")
+
+
+def main():
+    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    sp = ap.add_subparsers(dest="cmd", required=True)
+    sp.add_parser("doctor").set_defaults(fn=cmd_doctor)
+    p = sp.add_parser("analyze"); p.add_argument("--video", required=True); p.add_argument("--signs", required=True)
+    p.add_argument("--work", required=True); p.add_argument("--force", action="store_true"); p.set_defaults(fn=cmd_analyze)
+    for name, fn in (("build", cmd_build), ("check", cmd_check), ("preview", cmd_preview)):
+        p = sp.add_parser(name); p.add_argument("-c", "--config", required=True); p.add_argument("ids", nargs="*")
+        if name == "build":
+            p.add_argument("--no-check", action="store_true")
+            p.add_argument("-j", "--jobs", type=int, default=4, help="parallel items (1 = sequential)")
+        if name == "check":
+            p.add_argument("--frames"); p.add_argument("--full", action="store_true")
+            p.add_argument("--zoom", help="x0,y0,x1,y1 crop to enlarge"); p.add_argument("--compare", action="store_true")
+        if name == "preview":
+            p.add_argument("--ass"); p.add_argument("--out")
+        p.set_defaults(fn=fn)
+    p = sp.add_parser("assemble"); p.add_argument("-c", "--config", required=True)
+    p.add_argument("--out"); p.set_defaults(fn=cmd_assemble)
+    p = sp.add_parser("merge"); p.add_argument("-c", "--config", required=True); p.add_argument("--subs"); p.add_argument("--signs")
+    p.add_argument("--drop-styles"); p.set_defaults(fn=cmd_merge)
+    for name, fn in (("grid", cmd_grid), ("ruler", cmd_ruler)):
+        p = sp.add_parser(name); p.add_argument("--video"); p.add_argument("-c", "--config")
+        p.add_argument("--frames", required=True); p.add_argument("--out", required=True)
+        if name == "grid":
+            p.add_argument("--crop"); p.add_argument("--cols", type=int, default=4); p.add_argument("--width", type=int)
+        else:
+            p.add_argument("--box", required=True); p.add_argument("--scale", type=float, default=1.5); p.add_argument("--std", action="store_true")
+        p.set_defaults(fn=fn)
+    p = sp.add_parser("geom"); p.add_argument("-c", "--config", required=True); p.add_argument("--frames", required=True)
+    p.add_argument("--box", required=True); p.add_argument("--no-title", action="store_true"); p.set_defaults(fn=cmd_geom)
+    p = sp.add_parser("fonts"); p.add_argument("--cyr", action="store_true"); p.add_argument("--grep")
+    p.add_argument("--try", dest="try_", help="comma-separated families to render over --frame")
+    p.add_argument("--video"); p.add_argument("-c", "--config"); p.add_argument("--frame", type=int); p.add_argument("--text")
+    p.add_argument("--pos", help="x,baseline (analysis px)"); p.add_argument("--em", type=float, default=60)
+    p.add_argument("--colour", default="&H00303030&"); p.add_argument("--outline", default="&H00FFFFFF&")
+    p.add_argument("--bord", type=float, default=0.0); p.add_argument("--tags"); p.add_argument("--crop"); p.add_argument("--out")
+    p.set_defaults(fn=cmd_fonts)
+    p = sp.add_parser("track"); p.add_argument("--video"); p.add_argument("-c", "--config"); p.add_argument("--frames", required=True)
+    p.add_argument("--roi", action="append", required=True, help="x,y,w,h (repeat to compare ROIs)")
+    p.add_argument("--scale", type=float, action="append"); p.set_defaults(fn=cmd_track)
+    p = sp.add_parser("probe"); p.add_argument("--video"); p.add_argument("-c", "--config"); p.add_argument("--frames", required=True)
+    p.add_argument("--box", required=True); p.add_argument("--bg"); p.set_defaults(fn=cmd_probe)
+    p = sp.add_parser("set"); p.add_argument("-c", "--config", required=True); p.add_argument("assign", nargs="*")
+    p.add_argument("--from", dest="from_", help="UTF-8 JSON patch {\"@\": {...}, \"items\": {id: {...}}}"); p.set_defaults(fn=cmd_set)
+    p = sp.add_parser("split"); p.add_argument("-c", "--config", required=True); p.add_argument("id"); p.set_defaults(fn=cmd_split)
+    p = sp.add_parser("sheet"); p.add_argument("-c", "--config", required=True); p.add_argument("ids", nargs="*")
+    p.add_argument("--out"); p.set_defaults(fn=cmd_sheet)
+    p = sp.add_parser("compact"); p.add_argument("files", nargs="+"); p.set_defaults(fn=cmd_compact)
+    a = ap.parse_args()
+    a.fn(a)
+
+
+if __name__ == "__main__":
+    main()

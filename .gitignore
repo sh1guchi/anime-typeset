@@ -1,0 +1,4 @@
+__pycache__/
+*.pyc
+# reports of test runs (local paths, timings) - kept out of the public repo
+feedback/

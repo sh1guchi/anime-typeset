@@ -1,0 +1,16 @@
+{
+ "about": "Generic starting point: mask style + a serif sign with soft shadow. Copy to presets/<series>.json and adjust.",
+ "playres_y": 360,
+ "styles": [
+  "Style: Маска,Arial,20,&H00FFFFFF,&H000000FF,&H00000000,&H00000000,0,0,0,0,100,100,0,0,1,0,0,7,0,0,0,1",
+  "Style: Надпись,Georgia,24,&H00FFFFFF,&H000000FF,&H30101010,&H00000000,-1,0,0,0,100,100,0.5,0,1,1.2,0,2,0,0,0,204",
+  "Style: Надпись-тень,Georgia,24,&HFF000000,&H000000FF,&H60101010,&H00000000,-1,0,0,0,100,100,0.5,0,1,4,0,2,0,0,0,204"
+ ],
+ "sign": {
+  "layers": [
+   {"style": "Надпись-тень", "layer": 15, "tags": "\\blur5"},
+   {"style": "Надпись", "layer": 20, "tags": "\\blur1"}
+  ]
+ },
+ "glow": {"sig": [3, 6, 12], "w": [0.0, 0.7, 0.3], "C": [0, 0, 0]}
+}

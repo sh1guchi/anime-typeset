@@ -1,0 +1,149 @@
+{
+ "match": [
+  "grand blue",
+  "grand-blue",
+  "grandblue",
+  "гранд блю",
+  "ぐらんぶる"
+ ],
+ "about": "Grand Blue (Dreaming), S3 ep1. Handwriting on whiteboards (marker, Buxton Sketch), chalkboards (Gunny Rewritten; LC Chalk has a 'б' that reads as '5'), notes on paper (pen, Buxton Sketch), yellow recipe labels and white info cards (Rubik; masks: fill auto), cream caption plate (Georgia bold), phone UI (Segoe UI), LCD caller ID (Kozuka Gothic Pro), speech-bubble clock times (Century Gothic). Colours measured with `TS probe` (glyph colour line). PlayRes 640x360.",
+ "playres_y": 360,
+ "styles": [
+  "Style: Маска,Arial,20,&H00FFFFFF,&H000000FF,&H00000000,&H00000000,0,0,0,0,100,100,0,0,1,0,0,7,0,0,0,1",
+  "Style: Маркер,Buxton Sketch,24,&H0066595E,&H000000FF,&H0066595E,&H00000000,0,0,0,0,100,100,0,0,1,0.45,0,2,0,0,0,204",
+  "Style: Ручка,Buxton Sketch,24,&H0060595F,&H000000FF,&H0060595F,&H00000000,0,0,0,0,100,100,0,0,1,0.3,0,2,0,0,0,204",
+  "Style: Мел,Gunny Rewritten,24,&H00E0E5E4,&H000000FF,&H00E0E5E4,&H00000000,0,0,0,0,100,100,0,0,1,0,0,2,0,0,0,204",
+  "Style: Табличка,Rubik,24,&H00262626,&H000000FF,&H00FFFFFF,&H00000000,-1,0,0,0,100,100,0,0,1,2,0,2,0,0,0,204",
+  "Style: Карточка,Rubik,24,&H00262626,&H000000FF,&H00262626,&H00000000,0,0,0,0,100,100,0,0,1,0,0,2,0,0,0,204",
+  "Style: Плашка,Georgia,24,&H00141E28,&H000000FF,&H00F2EEFA,&H00000000,-1,0,0,0,100,100,0,0,1,1.6,0,2,0,0,0,204",
+  "Style: Время,Century Gothic,24,&H00202020,&H000000FF,&H00202020,&H00000000,-1,0,0,0,100,100,0,0,1,0,0,2,0,0,0,204",
+  "Style: ЖК,Kozuka Gothic Pro,24,&H00605550,&H000000FF,&H00605550,&H00000000,-1,0,0,0,100,100,0,0,1,0,0,2,0,0,0,204",
+  "Style: Телефон,Segoe UI,24,&H00FFFFFF,&H000000FF,&H00FFFFFF,&H00000000,0,0,0,0,100,100,0,0,1,0,0,1,0,0,0,204",
+  "Style: Чат,Segoe UI,24,&H004B2F5B,&H000000FF,&H004B2F5B,&H00000000,0,0,0,0,100,100,0,0,1,0,0,1,0,0,0,204"
+ ],
+ "sign": {
+  "layers": [
+   {
+    "style": "Табличка",
+    "layer": 20,
+    "tags": "\\blur0.6"
+   }
+  ]
+ },
+ "plate": {
+  "layers": [
+   {
+    "style": "Табличка",
+    "layer": 20,
+    "tags": "\\blur0.6"
+   }
+  ]
+ },
+ "card": {
+  "layers": [
+   {
+    "style": "Карточка",
+    "layer": 20,
+    "tags": "\\blur0.5"
+   }
+  ]
+ },
+ "caption": {
+  "layers": [
+   {
+    "style": "Плашка",
+    "layer": 20,
+    "tags": "\\blur2"
+   }
+  ]
+ },
+ "marker": {
+  "layers": [
+   {
+    "style": "Маркер",
+    "layer": 20,
+    "tags": "\\blur0.7"
+   }
+  ]
+ },
+ "pen": {
+  "layers": [
+   {
+    "style": "Ручка",
+    "layer": 20,
+    "tags": "\\blur0.6"
+   }
+  ]
+ },
+ "chalk": {
+  "layers": [
+   {
+    "style": "Мел",
+    "layer": 20,
+    "tags": "\\blur0.8"
+   }
+  ]
+ },
+ "time": {
+  "layers": [
+   {
+    "style": "Время",
+    "layer": 20,
+    "tags": "\\blur0.6"
+   }
+  ]
+ },
+ "lcd": {
+  "layers": [
+   {
+    "style": "ЖК",
+    "layer": 19,
+    "tags": "\\1a&HA0&\\blur6",
+    "offset": [
+     5,
+     4
+    ]
+   },
+   {
+    "style": "ЖК",
+    "layer": 20,
+    "tags": "\\blur1.5"
+   }
+  ]
+ },
+ "phone": {
+  "layers": [
+   {
+    "style": "Телефон",
+    "layer": 20,
+    "tags": "\\blur0.6"
+   }
+  ]
+ },
+ "chat": {
+  "layers": [
+   {
+    "style": "Чат",
+    "layer": 20,
+    "tags": "\\blur0.6"
+   }
+  ]
+ },
+ "glow": {
+  "sig": [
+   3,
+   6,
+   12
+  ],
+  "w": [
+   0.0,
+   0.7,
+   0.3
+  ],
+  "C": [
+   0,
+   0,
+   0
+  ]
+ }
+}

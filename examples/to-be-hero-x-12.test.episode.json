@@ -1,0 +1,186 @@
+{
+ "_comment": "Тест новых режимов на To Be Hero X 12 (CN-тайтл с вшитыми JP-надписями, кадр 2.35:1, PlayRes 640x272): doc - текст на экране планшета (attached + affine + dark polarity + несколько zones); news - бегущая строка (static inpaint, dark polarity), plain = строка CR как есть.",
+ "video": "../../To Be Hero X - 12.mkv",
+ "preset": "to-be-hero-x",
+ "playres": [
+  640,
+  272
+ ],
+ "out": "test_signs.ass",
+ "items": [
+  {
+   "id": "doc",
+   "name": "Досье на экране",
+   "type": "plate",
+   "frames": [
+    2325,
+    2398
+   ],
+   "zones": [
+    [
+     450,
+     95,
+     605,
+     155
+    ],
+    [
+     420,
+     185,
+     605,
+     240
+    ],
+    [
+     385,
+     285,
+     570,
+     345
+    ],
+    [
+     355,
+     395,
+     650,
+     455
+    ],
+    [
+     305,
+     510,
+     710,
+     580
+    ]
+   ],
+   "attached": true,
+   "detect": {
+    "polarity": "dark",
+    "thr": 14,
+    "maxc": 200,
+    "win": 61,
+    "dil": 10,
+    "close": [
+     15,
+     5
+    ]
+   },
+   "clean": {
+    "mode": "inpaint",
+    "ref": 2361
+   },
+   "motion": {
+    "mode": "affine",
+    "denoise": false
+   },
+   "encode": {
+    "block": 3,
+    "maxK": 48,
+    "tau": 3.0
+   },
+   "texts": [
+    {
+     "text": "Семейная информация",
+     "preset": "screen",
+     "pos": [
+      462,
+      150
+     ],
+     "an": 1,
+     "em": 30,
+     "maxw": 300,
+     "fit": "squeeze"
+    },
+    {
+     "text": "Отец: Лю Чжэнь",
+     "preset": "screen",
+     "pos": [
+      432,
+      234
+     ],
+     "an": 1,
+     "em": 30
+    },
+    {
+     "text": "Возраст: 45 лет",
+     "preset": "screen",
+     "pos": [
+      399,
+      338
+     ],
+     "an": 1,
+     "em": 30
+    },
+    {
+     "text": "Место работы: Неизвестно",
+     "preset": "screen",
+     "pos": [
+      366,
+      450
+     ],
+     "an": 1,
+     "em": 30,
+     "maxw": 300,
+     "fit": "squeeze"
+    },
+    {
+     "text": "Опыт работы: Журналист при DOS",
+     "preset": "screen",
+     "pos": [
+      320,
+      575
+     ],
+     "an": 1,
+     "em": 30,
+     "maxw": 380,
+     "fit": "squeeze"
+    }
+   ]
+  },
+  {
+   "id": "news",
+   "name": "Бегущая строка новостей",
+   "type": "plate",
+   "frames": [
+    1504,
+    1696
+   ],
+   "zone": [
+    262,
+    676,
+    1440,
+    757
+   ],
+   "detect": {
+    "polarity": "dark",
+    "thr": 25,
+    "maxc": 150,
+    "win": 61,
+    "dil": 6,
+    "close": [
+     9,
+     3
+    ]
+   },
+   "clean": {
+    "mode": "inpaint"
+   },
+   "encode": {
+    "block": 3,
+    "maxK": 48,
+    "feather": 6
+   },
+   "text": {
+    "text": "Неожиданное поражение Квин: виновна Лакки Циан?!",
+    "preset": "headline",
+    "pos": [
+     278,
+     748
+    ],
+    "an": 1,
+    "em": 58,
+    "maxw": 1140,
+    "fit": "squeeze"
+   },
+   "source_lines": [
+    "Dialogue: 0,0:01:02.71,0:01:10.76,Основной-сверху,Надпись,0,0,0,,{\\an1\\pos(94,226)\\fs14\\b1\\fax-.1\\c&H383C39&\\3c&HFCFFFE&\\shad0}Неожиданное поражение Квин: виновна Лакки Циан?!"
+   ]
+  }
+ ],
+ "subs": "test_subs.ass"
+}

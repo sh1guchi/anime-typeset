@@ -1,0 +1,16 @@
+{
+ "match": ["to be hero x", "to-be-hero-x"],
+ "about": "To Be Hero X (CN donghua, JP broadcast with burned-in JP sign subs). Test preset from ep12: screen UI text, news ticker. PlayRes 640x272 (2.35:1).",
+ "playres_y": 272,
+ "styles": [
+  "Style: Маска,Arial,20,&H00FFFFFF,&H000000FF,&H00000000,&H00000000,0,0,0,0,100,100,0,0,1,0,0,7,0,0,0,1",
+  "Style: Экран,MagistralC,20,&H00463A37,&H000000FF,&H60F0F0F0,&H00000000,-1,0,0,0,100,100,0.5,0,1,0.4,0,1,0,0,0,204",
+  "Style: Заголовок,Franklin Gothic Heavy,20,&H005F2D28,&H000000FF,&H40FFFFFF,&H00000000,0,0,0,0,100,100,0.5,0,1,0.6,0,1,0,0,0,204",
+  "Style: Надпись,Georgia,24,&H00FFFFFF,&H000000FF,&H30101010,&H00000000,-1,0,0,0,100,100,0.5,0,1,1.2,0,2,0,0,0,204",
+  "Style: Надпись-тень,Georgia,24,&HFF000000,&H000000FF,&H60101010,&H00000000,-1,0,0,0,100,100,0.5,0,1,4,0,2,0,0,0,204"
+ ],
+ "screen": {"layers": [{"style": "Экран", "layer": 20, "tags": "\\blur0.6\\fax-0.22"}]},
+ "headline": {"layers": [{"style": "Заголовок", "layer": 20, "tags": "\\blur0.5\\fax-0.18"}]},
+ "sign": {"layers": [{"style": "Надпись-тень", "layer": 15, "tags": "\\blur5"}, {"style": "Надпись", "layer": 20, "tags": "\\blur1"}]},
+ "glow": {"sig": [3, 6, 12], "w": [0.0, 0.7, 0.3], "C": [0, 0, 0]}
+}
