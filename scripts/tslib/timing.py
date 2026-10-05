@@ -14,6 +14,7 @@ from . import coords
 from .cuts import detect_cuts
 
 ON, FULL, ABS = 0.3, 0.85, 0.06   # clearly there / fully there / clearly gone
+STILL = 0.6                        # min detail correlation between 30% and 70% of the sign (text stays put)
 
 
 def regions(it):
@@ -97,6 +98,12 @@ def detect(video, it, pad=48):
     L = _detail(G) * mask
     i0, i1 = f0 - a, min(f1 - a, n - 1)
     lo, hi = i0 + (i1 - i0) * 3 // 10, i0 + (i1 - i0) * 7 // 10
+    # the method needs text that stays put on screen: a zooming logo / scrolling text decorrelates
+    # (Black Clover OP logo: -0.02; cards, titles, overlays over a moving background: >= 0.91)
+    c = float((L[lo] * L[hi]).sum() / (np.sqrt((L[lo] ** 2).sum() * (L[hi] ** 2).sum()) + 1e-6))
+    if c < STILL:
+        note = f"the text moves on screen (detail correlation {c:.2f}) - not judged, set the frames by `grid`"
+        return {"frames": [f0, f1], "sure": [False, False], "note": note, "hint": {"note": note}}
     ref = np.median(L[lo:hi + 1], axis=0)
     centre = (i0 + i1) // 2
     ss, ks, ns = _side(L, ref, mask, range(0, i0), centre, -1, n)

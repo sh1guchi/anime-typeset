@@ -1,5 +1,5 @@
 {
- "_comment": "Draft of TS analyze for Black Clover 2 ep01 (frames, cards, source boxes) - input of tests/check_analyze.py; the motion/zone hints in it are recomputed by the check.",
+ "_comment": "Draft of TS analyze for Black Clover 2 ep01 (frames, cards, source boxes, timing hints) - input of tests/check_analyze.py; the motion/zone hints in it are recomputed by the check. Re-made 5 Oct 2026.",
  "video": "../../Black Clover 2 - 01.mkv",
  "source_signs": "../../надписи/исходники/Black Clover 2 - 01.надписи.ass",
  "preset": "black-clover",
@@ -8,6 +8,7 @@
   360
  ],
  "out": "TODO",
+ "source_wrapstyle": 0,
  "items": [
   {
    "id": "carstvo-pik",
@@ -49,7 +50,26 @@
    "clean": {
     "mode": "TODO inpaint|ref (+ref frame)"
    },
-   "motion": "TODO"
+   "motion": "TODO",
+   "_timing": {
+    "on_screen": [
+     1761,
+     1841
+    ],
+    "fade_in": [
+     1761,
+     1779
+    ],
+    "fade_out": null,
+    "translator": [
+     1761,
+     1841
+    ],
+    "sure": [
+     true,
+     true
+    ]
+   }
   },
   {
    "id": "carstvo-klevera",
@@ -93,6 +113,22 @@
    },
    "motion": {
     "mode": "affine"
+   },
+   "_timing": {
+    "on_screen": [
+     4200,
+     4253
+    ],
+    "fade_in": null,
+    "fade_out": null,
+    "translator": [
+     4200,
+     4253
+    ],
+    "sure": [
+     true,
+     true
+    ]
    }
   },
   {
@@ -135,7 +171,29 @@
    "clean": {
     "mode": "TODO inpaint|ref (+ref frame)"
    },
-   "motion": "TODO"
+   "motion": "TODO",
+   "_timing": {
+    "on_screen": [
+     6195,
+     6324
+    ],
+    "fade_in": [
+     6195,
+     6200
+    ],
+    "fade_out": [
+     6296,
+     6324
+    ],
+    "translator": [
+     6224,
+     6343
+    ],
+    "sure": [
+     true,
+     true
+    ]
+   }
   },
   {
    "id": "nachalo-bitvy",
@@ -179,6 +237,22 @@
    },
    "motion": {
     "mode": "affine"
+   },
+   "_timing": {
+    "on_screen": [
+     8117,
+     8247
+    ],
+    "fade_in": null,
+    "fade_out": null,
+    "translator": [
+     8117,
+     8247
+    ],
+    "sure": [
+     true,
+     true
+    ]
    }
   },
   {
@@ -209,14 +283,30 @@
      "box": [
       1019,
       561,
-      1926,
+      1927,
       788
      ],
      "name": "Фуэголеон Вермилион",
      "title": "Капитан Ордена «Багряных львов»"
     }
    ],
-   "motion": "static"
+   "motion": "static",
+   "_timing": {
+    "on_screen": [
+     22583,
+     22628
+    ],
+    "fade_in": null,
+    "fade_out": null,
+    "translator": [
+     22583,
+     22628
+    ],
+    "sure": [
+     true,
+     true
+    ]
+   }
   },
   {
    "id": "ril-buamorte",
@@ -253,7 +343,23 @@
      "title": "Капитан Ордена «Бирюзовых оленей»"
     }
    ],
-   "motion": "static"
+   "motion": "static",
+   "_timing": {
+    "on_screen": [
+     22629,
+     22690
+    ],
+    "fade_in": null,
+    "fade_out": null,
+    "translator": [
+     22629,
+     22690
+    ],
+    "sure": [
+     true,
+     true
+    ]
+   }
   },
   {
    "id": "dzhek-zarippa",
@@ -307,7 +413,23 @@
      "title": "Рыцарь Ордена «Изумрудных богомолов»"
     }
    ],
-   "motion": "static"
+   "motion": "static",
+   "_timing": {
+    "on_screen": [
+     22691,
+     22781
+    ],
+    "fade_in": null,
+    "fade_out": null,
+    "translator": [
+     22691,
+     22781
+    ],
+    "sure": [
+     true,
+     true
+    ]
+   }
   },
   {
    "id": "sharlotta-rouzley",
@@ -344,7 +466,23 @@
      "title": "Капитан Ордена «Голубых роз»"
     }
    ],
-   "motion": "static"
+   "motion": "static",
+   "_timing": {
+    "on_screen": [
+     22782,
+     22847
+    ],
+    "fade_in": null,
+    "fade_out": null,
+    "translator": [
+     22782,
+     22847
+    ],
+    "sure": [
+     true,
+     true
+    ]
+   }
   },
   {
    "id": "salli",
@@ -415,12 +553,28 @@
    "motion": {
     "mode": "path",
     "roi": [
-     81,
-     595,
+     667,
+     467,
      521,
-     184
+     185
     ],
-    "_analyze": "shift [-8.0, 903.7999877929688], residual 179.97, 2 patches agree on [-8.300000190734863, 902.5], compensation steadies the background by +0.32"
+    "_analyze": "shift [-6.800000190734863, 899.5999755859375], residual 181.31, 2 patches agree on [-8.399999618530273, 898.7000122070312], compensation steadies the background by +0.32; drift along x -8.4 px is small - if `grid` shows none, set \"axis\": \"y\""
+   },
+   "_timing": {
+    "on_screen": [
+     22848,
+     22969
+    ],
+    "fade_in": null,
+    "fade_out": null,
+    "translator": [
+     22848,
+     22969
+    ],
+    "sure": [
+     true,
+     true
+    ]
    }
   },
   {
@@ -466,8 +620,24 @@
      773,
      180
     ],
-    "_analyze": "shift [-35.5, 0.10000000149011612], residual 0.38, 3 patches agree on [-35.5, 0.6000000238418579], compensation steadies the background by +0.40",
+    "_analyze": "shift [-34.599998474121094, 0.30000001192092896], residual 0.41, 3 patches agree on [-34.599998474121094, 0.5], compensation steadies the background by +0.44",
     "axis": "x"
+   },
+   "_timing": {
+    "on_screen": [
+     22970,
+     23027
+    ],
+    "fade_in": null,
+    "fade_out": null,
+    "translator": [
+     22970,
+     23027
+    ],
+    "sure": [
+     true,
+     true
+    ]
    }
   },
   {
@@ -513,8 +683,24 @@
      721,
      227
     ],
-    "_analyze": "shift [49.5, 1.600000023841858], residual 0.30, 3 patches agree on [52.5, 1.600000023841858], compensation steadies the background by +0.73",
+    "_analyze": "shift [50.099998474121094, 2.200000047683716], residual 0.56, 3 patches agree on [51.70000076293945, 2.200000047683716], compensation steadies the background by +0.65",
     "axis": "x"
+   },
+   "_timing": {
+    "on_screen": [
+     23028,
+     23097
+    ],
+    "fade_in": null,
+    "fade_out": null,
+    "translator": [
+     23028,
+     23097
+    ],
+    "sure": [
+     true,
+     true
+    ]
    }
   },
   {
@@ -552,7 +738,23 @@
      "title": "Капитан Ордена «Среброкрылых орлов»"
     }
    ],
-   "motion": "static"
+   "motion": "static",
+   "_timing": {
+    "on_screen": [
+     23098,
+     23200
+    ],
+    "fade_in": null,
+    "fade_out": null,
+    "translator": [
+     23098,
+     23200
+    ],
+    "sure": [
+     true,
+     true
+    ]
+   }
   },
   {
    "id": "maksa-nors",
@@ -580,7 +782,7 @@
    "cards": [
     {
      "box": [
-      223,
+      177,
       283,
       728,
       467
@@ -588,7 +790,23 @@
      "name": "Макса Норс"
     }
    ],
-   "motion": "static"
+   "motion": "static",
+   "_timing": {
+    "on_screen": [
+     23201,
+     23308
+    ],
+    "fade_in": null,
+    "fade_out": null,
+    "translator": [
+     23201,
+     23308
+    ],
+    "sure": [
+     true,
+     true
+    ]
+   }
   },
   {
    "id": "ralfi-niaflem",
@@ -632,8 +850,24 @@
      633,
      183
     ],
-    "_analyze": "shift [95.5, 0.0], residual 0.40, 3 patches agree on [95.5, 1.2999999523162842], compensation steadies the background by +0.67",
+    "_analyze": "shift [97.0, -0.4000000059604645], residual 0.40, 3 patches agree on [97.0, 1.5], compensation steadies the background by +0.64",
     "axis": "x"
+   },
+   "_timing": {
+    "on_screen": [
+     23309,
+     23362
+    ],
+    "fade_in": null,
+    "fade_out": null,
+    "translator": [
+     23309,
+     23362
+    ],
+    "sure": [
+     true,
+     true
+    ]
    }
   },
   {
@@ -663,7 +897,7 @@
     [
      207,
      797,
-     633,
+     632,
      860
     ]
    ],
@@ -676,7 +910,25 @@
    "clean": {
     "mode": "TODO inpaint|ref (+ref frame)"
    },
-   "motion": "TODO"
+   "motion": {
+    "mode": "affine"
+   },
+   "_timing": {
+    "on_screen": [
+     24787,
+     24876
+    ],
+    "fade_in": null,
+    "fade_out": null,
+    "translator": [
+     24787,
+     24876
+    ],
+    "sure": [
+     true,
+     true
+    ]
+   }
   }
  ]
 }

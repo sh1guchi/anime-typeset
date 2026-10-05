@@ -1,5 +1,5 @@
 {
- "_comment": "Рабочий конфиг 1-й серии Black Clover (сезон 2), прогон с нуля 4 октября 2026. Лежал в <папка видео>/_typeset/<имя видео>/episode.json; пути относительно этой папки. Решения по надписям и почему — в black-clover-2-01.notes.md.",
+ "_comment": "Рабочий конфиг 1-й серии Black Clover (сезон 2), прогон с нуля 4 октября 2026. Лежал в <папка видео>/_typeset/<имя видео>/episode.json; пути относительно этой папки. Пересобрано 5 октября 2026 (вечер): тайминг по кадру, LaMa на «Замке Клевера». Решения по надписям и почему — в black-clover-2-01.notes.md.",
  "video": "../../Black Clover 2 - 01.mkv",
  "source_signs": "../../надписи/исходники/Black Clover 2 - 01.надписи.ass",
  "preset": "black-clover",
@@ -8,9 +8,7 @@
   360
  ],
  "out": "../../надписи/Black Clover 2 - 01.надписи.ass",
- "subs": "../../сабы/Black Clover 2 - 01.сабы.ass",
- "preview": "../../надписи/Black Clover 2 - 01.превью.mp4",
- "font_dirs": [],
+ "source_wrapstyle": 0,
  "items": [
   {
    "id": "carstvo-pik",
@@ -35,12 +33,17 @@
     ]
    ],
    "type": "plate",
-   "zone": [
-    700,
-    895,
-    1210,
-    997
-   ],
+   "text": {
+    "text": "Царство Пик",
+    "preset": "sign",
+    "em": 66,
+    "x": 958,
+    "base": 983,
+    "fade_frames": [
+     1761,
+     1786
+    ]
+   },
    "detect": {
     "frames": [
      1790,
@@ -72,6 +75,31 @@
     ],
     "denoise": true
    },
+   "_timing": {
+    "on_screen": [
+     1761,
+     1841
+    ],
+    "fade_in": [
+     1761,
+     1779
+    ],
+    "fade_out": null,
+    "translator": [
+     1761,
+     1841
+    ],
+    "sure": [
+     true,
+     true
+    ]
+   },
+   "zone": [
+    700,
+    895,
+    1210,
+    997
+   ],
    "ring": {
     "outer": [
      0,
@@ -82,17 +110,6 @@
     "inner_pad": [
      60,
      40
-    ]
-   },
-   "text": {
-    "text": "Царство Пик",
-    "preset": "sign",
-    "em": 66,
-    "x": 958,
-    "base": 983,
-    "fade_frames": [
-     1761,
-     1786
     ]
    },
    "encode": {
@@ -124,12 +141,13 @@
     ]
    ],
    "type": "plate",
-   "zone": [
-    715,
-    893,
-    1195,
-    997
-   ],
+   "text": {
+    "text": "Царство Клевера",
+    "preset": "sign",
+    "em": 66,
+    "x": 958,
+    "base": 983
+   },
    "detect": {
     "frames": [
      4200,
@@ -147,7 +165,8 @@
    },
    "clean": {
     "mode": "inpaint",
-    "ref": 4226
+    "ref": 4226,
+    "fill": "lama"
    },
    "motion": {
     "mode": "affine",
@@ -156,6 +175,28 @@
      1075
     ]
    },
+   "_timing": {
+    "on_screen": [
+     4200,
+     4253
+    ],
+    "fade_in": null,
+    "fade_out": null,
+    "translator": [
+     4200,
+     4253
+    ],
+    "sure": [
+     true,
+     true
+    ]
+   },
+   "zone": [
+    715,
+    893,
+    1195,
+    997
+   ],
    "ring": {
     "outer": [
      300,
@@ -167,13 +208,6 @@
      40,
      30
     ]
-   },
-   "text": {
-    "text": "Царство Клевера",
-    "preset": "sign",
-    "em": 66,
-    "x": 958,
-    "base": 983
    }
   },
   {
@@ -199,6 +233,40 @@
     ]
    ],
    "type": "follow",
+   "text": {
+    "text": "ЧЁРНЫЙ КЛЕВЕР",
+    "style": "Логотип",
+    "cap": 26,
+    "span": [
+     662,
+     1257
+    ],
+    "base": 727,
+    "layer": 30,
+    "tags": "\\blur1.2"
+   },
+   "_timing": {
+    "on_screen": [
+     6195,
+     6324
+    ],
+    "fade_in": [
+     6195,
+     6200
+    ],
+    "fade_out": [
+     6296,
+     6324
+    ],
+    "translator": [
+     6224,
+     6343
+    ],
+    "sure": [
+     true,
+     true
+    ]
+   },
    "track": {
     "ref": 6306,
     "search": [
@@ -213,18 +281,6 @@
      6340
     ],
     "min_score": 0.6
-   },
-   "text": {
-    "text": "ЧЁРНЫЙ КЛЕВЕР",
-    "style": "Логотип",
-    "cap": 26,
-    "span": [
-     662,
-     1257
-    ],
-    "base": 727,
-    "layer": 30,
-    "tags": "\\blur1.2"
    },
    "occluders": {
     "from": 6309,
@@ -254,12 +310,13 @@
     ]
    ],
    "type": "plate",
-   "zone": [
-    640,
-    370,
-    1260,
-    700
-   ],
+   "text": {
+    "text": "Начало\\Nбитвы",
+    "preset": "title",
+    "em": 118,
+    "x": 948,
+    "base": 648
+   },
    "detect": {
     "frames": [
      8117,
@@ -307,6 +364,28 @@
      ]
     ]
    },
+   "_timing": {
+    "on_screen": [
+     8117,
+     8247
+    ],
+    "fade_in": null,
+    "fade_out": null,
+    "translator": [
+     8117,
+     8247
+    ],
+    "sure": [
+     true,
+     true
+    ]
+   },
+   "zone": [
+    640,
+    370,
+    1260,
+    700
+   ],
    "ring": {
     "outer": [
      300,
@@ -318,13 +397,6 @@
      40,
      40
     ]
-   },
-   "text": {
-    "text": "Начало\\Nбитвы",
-    "preset": "title",
-    "em": 118,
-    "x": 948,
-    "base": 648
    }
   },
   {
@@ -350,7 +422,6 @@
     ]
    ],
    "type": "card",
-   "motion": "static",
    "cards": [
     {
      "box": [
@@ -362,7 +433,24 @@
      "title": "Капитан Ордена «Багряных львов»",
      "name": "Фуэголеон Вермилион"
     }
-   ]
+   ],
+   "motion": "static",
+   "_timing": {
+    "on_screen": [
+     22583,
+     22628
+    ],
+    "fade_in": null,
+    "fade_out": null,
+    "translator": [
+     22583,
+     22628
+    ],
+    "sure": [
+     true,
+     true
+    ]
+   }
   },
   {
    "id": "ril-buamorte",
@@ -387,7 +475,6 @@
     ]
    ],
    "type": "card",
-   "motion": "static",
    "cards": [
     {
      "box": [
@@ -399,7 +486,24 @@
      "title": "Капитан Ордена «Бирюзовых оленей»",
      "name": "Рил Буамортье"
     }
-   ]
+   ],
+   "motion": "static",
+   "_timing": {
+    "on_screen": [
+     22629,
+     22690
+    ],
+    "fade_in": null,
+    "fade_out": null,
+    "translator": [
+     22629,
+     22690
+    ],
+    "sure": [
+     true,
+     true
+    ]
+   }
   },
   {
    "id": "dzhek-zarippa",
@@ -431,11 +535,6 @@
     ]
    ],
    "type": "card",
-   "motion": "static",
-   "plate": [
-    22723,
-    22781
-   ],
    "cards": [
     {
      "box": [
@@ -466,6 +565,27 @@
      "title": "Рыцарь Ордена «Изумрудных богомолов»",
      "name": "Сэкке Бронзазза"
     }
+   ],
+   "motion": "static",
+   "_timing": {
+    "on_screen": [
+     22691,
+     22781
+    ],
+    "fade_in": null,
+    "fade_out": null,
+    "translator": [
+     22691,
+     22781
+    ],
+    "sure": [
+     true,
+     true
+    ]
+   },
+   "plate": [
+    22723,
+    22781
    ]
   },
   {
@@ -491,7 +611,6 @@
     ]
    ],
    "type": "card",
-   "motion": "static",
    "cards": [
     {
      "box": [
@@ -503,7 +622,24 @@
      "title": "Капитан Ордена «Голубых роз»",
      "name": "Шарлотта Роузлей"
     }
-   ]
+   ],
+   "motion": "static",
+   "_timing": {
+    "on_screen": [
+     22782,
+     22847
+    ],
+    "fade_in": null,
+    "fade_out": null,
+    "translator": [
+     22782,
+     22847
+    ],
+    "sure": [
+     true,
+     true
+    ]
+   }
   },
   {
    "id": "salli",
@@ -528,6 +664,17 @@
     ]
    ],
    "type": "card",
+   "cards": [
+    {
+     "box": [
+      667,
+      708,
+      1188,
+      893
+     ],
+     "name": "Салли"
+    }
+   ],
    "motion": {
     "mode": "path",
     "roi": [
@@ -541,126 +688,25 @@
     "rel": 0.1,
     "clip": "mask"
    },
-   "geom_frames": [
-    22940,
-    22969
-   ],
-   "cards": [
-    {
-     "box": [
-      667,
-      708,
-      1188,
-      893
-     ],
-     "name": "Салли"
-    }
-   ],
-   "mask_dil": 16
-  },
-  {
-   "id": "baltos",
-   "name": "Балтос",
-   "frames": [
-    22848,
-    22969
-   ],
-   "source_frames": [
-    22848,
-    22969
-   ],
-   "source_lines": [
-    "Dialogue: 0,0:15:52.92,0:15:58.01,Имена-и-названия,Надпись,0,0,0,,{\\fs20\\blue3\\pos(114,351.5)}Балтос"
-   ],
-   "source_boxes": [
-    [
-     261,
-     1004,
-     422,
-     1047
-    ]
-   ],
-   "type": "card",
-   "motion": {
-    "mode": "path",
-    "roi": [
-     120,
-     350,
-     380,
-     420
+   "_timing": {
+    "on_screen": [
+     22848,
+     22969
     ],
-    "axis": "y",
-    "tol": 0.25,
-    "rel": 0.1,
-    "clip": "mask"
+    "fade_in": null,
+    "fade_out": null,
+    "translator": [
+     22848,
+     22969
+    ],
+    "sure": [
+     true,
+     true
+    ]
    },
    "geom_frames": [
     22940,
     22969
-   ],
-   "cards": [
-    {
-     "box": [
-      81,
-      835,
-      602,
-      1019
-     ],
-     "name": "Балтос"
-    }
-   ],
-   "mask_dil": 16
-  },
-  {
-   "id": "rades",
-   "name": "Радес Спирит",
-   "frames": [
-    22848,
-    22969
-   ],
-   "source_frames": [
-    22848,
-    22969
-   ],
-   "source_lines": [
-    "Dialogue: 0,0:15:52.92,0:15:58.01,Имена-и-названия,Надпись,0,0,0,,{\\fs20\\blue3\\pos(498.5,355)}Радес Спирит"
-   ],
-   "source_boxes": [
-    [
-     1334,
-     1013,
-     1657,
-     1068
-    ]
-   ],
-   "type": "card",
-   "motion": {
-    "mode": "path",
-    "roi": [
-     1320,
-     350,
-     400,
-     420
-    ],
-    "axis": "y",
-    "tol": 0.25,
-    "rel": 0.1,
-    "clip": "mask"
-   },
-   "geom_frames": [
-    22940,
-    22969
-   ],
-   "cards": [
-    {
-     "box": [
-      1151,
-      831,
-      1840,
-      1019
-     ],
-     "name": "Радес Спирит"
-    }
    ],
    "mask_dil": 16
   },
@@ -687,15 +733,6 @@
     ]
    ],
    "type": "card",
-   "motion": {
-    "mode": "linear",
-    "roi": [
-     40,
-     60,
-     600,
-     440
-    ]
-   },
    "cards": [
     {
      "box": [
@@ -707,7 +744,32 @@
      "title": "Капитан Ордена «Коралловых павлинов»",
      "name": "Дороти Анзворт"
     }
-   ]
+   ],
+   "motion": {
+    "mode": "linear",
+    "roi": [
+     40,
+     60,
+     600,
+     440
+    ]
+   },
+   "_timing": {
+    "on_screen": [
+     22970,
+     23027
+    ],
+    "fade_in": null,
+    "fade_out": null,
+    "translator": [
+     22970,
+     23027
+    ],
+    "sure": [
+     true,
+     true
+    ]
+   }
   },
   {
    "id": "langiris-bordo",
@@ -732,15 +794,6 @@
     ]
    ],
    "type": "card",
-   "motion": {
-    "mode": "path",
-    "roi": [
-     1050,
-     150,
-     800,
-     380
-    ]
-   },
    "cards": [
     {
      "box": [
@@ -752,7 +805,32 @@
      "title": "Рыцарь Ордена «Златого рассвета»",
      "name": "Лангирис Бордо"
     }
-   ]
+   ],
+   "motion": {
+    "mode": "path",
+    "roi": [
+     1050,
+     150,
+     800,
+     380
+    ]
+   },
+   "_timing": {
+    "on_screen": [
+     23028,
+     23097
+    ],
+    "fade_in": null,
+    "fade_out": null,
+    "translator": [
+     23028,
+     23097
+    ],
+    "sure": [
+     true,
+     true
+    ]
+   }
   },
   {
    "id": "nozel-silva",
@@ -777,7 +855,6 @@
     ]
    ],
    "type": "card",
-   "motion": "static",
    "cards": [
     {
      "box": [
@@ -789,7 +866,24 @@
      "title": "Капитан Ордена «Среброкрылых орлов»",
      "name": "Нозель Сильва"
     }
-   ]
+   ],
+   "motion": "static",
+   "_timing": {
+    "on_screen": [
+     23098,
+     23200
+    ],
+    "fade_in": null,
+    "fade_out": null,
+    "translator": [
+     23098,
+     23200
+    ],
+    "sure": [
+     true,
+     true
+    ]
+   }
   },
   {
    "id": "maksa-nors",
@@ -814,7 +908,6 @@
     ]
    ],
    "type": "card",
-   "motion": "static",
    "cards": [
     {
      "box": [
@@ -825,7 +918,24 @@
      ],
      "name": "Макса Норс"
     }
-   ]
+   ],
+   "motion": "static",
+   "_timing": {
+    "on_screen": [
+     23201,
+     23308
+    ],
+    "fade_in": null,
+    "fade_out": null,
+    "translator": [
+     23201,
+     23308
+    ],
+    "sure": [
+     true,
+     true
+    ]
+   }
   },
   {
    "id": "ralfi-niaflem",
@@ -850,15 +960,6 @@
     ]
    ],
    "type": "card",
-   "motion": {
-    "mode": "linear",
-    "roi": [
-     1150,
-     620,
-     650,
-     190
-    ]
-   },
    "cards": [
     {
      "box": [
@@ -869,7 +970,32 @@
      ],
      "name": "Ральфи Ниафлем"
     }
-   ]
+   ],
+   "motion": {
+    "mode": "linear",
+    "roi": [
+     1150,
+     620,
+     650,
+     190
+    ]
+   },
+   "_timing": {
+    "on_screen": [
+     23309,
+     23362
+    ],
+    "fade_in": null,
+    "fade_out": null,
+    "translator": [
+     23309,
+     23362
+    ],
+    "sure": [
+     true,
+     true
+    ]
+   }
   },
   {
    "id": "yuno",
@@ -903,6 +1029,22 @@
      600
     ],
     "clip": "mask"
+   },
+   "_timing": {
+    "on_screen": [
+     24787,
+     24876
+    ],
+    "fade_in": null,
+    "fade_out": null,
+    "translator": [
+     24787,
+     24876
+    ],
+    "sure": [
+     true,
+     true
+    ]
    },
    "cards": [
     {
@@ -941,6 +1083,114 @@
     }
    ],
    "mask_dil": 14
+  },
+  {
+   "id": "baltos",
+   "name": "Балтос",
+   "type": "card",
+   "motion": {
+    "mode": "path",
+    "roi": [
+     120,
+     350,
+     380,
+     420
+    ],
+    "axis": "y",
+    "tol": 0.25,
+    "rel": 0.1,
+    "clip": "mask"
+   },
+   "geom_frames": [
+    22940,
+    22969
+   ],
+   "cards": [
+    {
+     "box": [
+      81,
+      835,
+      602,
+      1019
+     ],
+     "name": "Балтос"
+    }
+   ],
+   "mask_dil": 16,
+   "frames": [
+    22848,
+    22969
+   ],
+   "source_frames": [
+    22848,
+    22969
+   ],
+   "source_lines": [
+    "Dialogue: 0,0:15:52.92,0:15:58.01,Имена-и-названия,Надпись,0,0,0,,{\\fs20\\blue3\\pos(114,351.5)}Балтос"
+   ],
+   "source_boxes": [
+    [
+     261,
+     1004,
+     422,
+     1047
+    ]
+   ]
+  },
+  {
+   "id": "rades",
+   "name": "Радес Спирит",
+   "type": "card",
+   "motion": {
+    "mode": "path",
+    "roi": [
+     1320,
+     350,
+     400,
+     420
+    ],
+    "axis": "y",
+    "tol": 0.25,
+    "rel": 0.1,
+    "clip": "mask"
+   },
+   "geom_frames": [
+    22940,
+    22969
+   ],
+   "cards": [
+    {
+     "box": [
+      1151,
+      831,
+      1840,
+      1019
+     ],
+     "name": "Радес Спирит"
+    }
+   ],
+   "mask_dil": 16,
+   "frames": [
+    22848,
+    22969
+   ],
+   "source_frames": [
+    22848,
+    22969
+   ],
+   "source_lines": [
+    "Dialogue: 0,0:15:52.92,0:15:58.01,Имена-и-названия,Надпись,0,0,0,,{\\fs20\\blue3\\pos(498.5,355)}Радес Спирит"
+   ],
+   "source_boxes": [
+    [
+     1334,
+     1013,
+     1657,
+     1068
+    ]
+   ]
   }
- ]
+ ],
+ "subs": "../../сабы/Black Clover 2 - 01.сабы.ass",
+ "preview": "../../надписи/Black Clover 2 - 01.превью.mp4"
 }

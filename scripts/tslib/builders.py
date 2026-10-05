@@ -213,6 +213,17 @@ def build_plate(ctx, it):
     bb = [min(z[0] for z in boxes), min(z[1] for z in boxes), max(z[2] for z in boxes), max(z[3] for z in boxes)]
 
     def inpainted(base):
+        if clean.get("fill") == "lama":
+            # neural fill: texture (merlons, brick, wood, paper) instead of a smooth smudge; same plate otherwise
+            from . import lama
+            hole = m.copy()
+            for sm, gl in surf:             # inside a filled shape only its glyphs are replaced, the rest is real
+                hole &= ~sm
+                hole |= dilate(gl, int(clean.get("lama_pad", 4)))
+            P = lama.fill(base, hole)
+            for p in plates:
+                P = platefill.paint(P.copy() if P is base else P, p)
+            return P
         keep = np.zeros(coords.shape(), bool)
         for (x0, y0, x1, y1), zd in zip(zones, zdets):
             if zd.get("fill"):
@@ -279,6 +290,20 @@ def build_plate(ctx, it):
                     cf = colfit(im, P, ring)
                     stack.append(im * cf[:, 0] + cf[:, 1])
                 P = np.median(np.stack(stack), axis=0).astype(np.float32)
+            if clean.get("fill") == "lama":
+                # clean frames first, LaMa only for what they do not settle: pixels where the clean frames
+                # disagree (snow, sparks, flicker the median keeps a trace of). No `pre` -> nothing to judge.
+                unk = np.zeros(coords.shape(), bool)
+                if pre:
+                    lum = np.stack(stack).mean(axis=3)
+                    unk = lum.std(axis=0) > float(clean.get("lama_std", 18))
+                unk = dilate(unk & dilate(m, 12), 1)
+                if unk.any():
+                    from . import lama
+                    P = lama.fill(P, unk)
+                    print(f"    lama: {int(unk.sum())} px the clean frames disagree on", flush=True)
+                else:
+                    print("    lama: the clean frames show all of the patch - nothing left for LaMa", flush=True)
         mp = m.copy()
         for p in plates:
             mp |= platefill.full_mask(p)
@@ -290,6 +315,29 @@ def build_plate(ctx, it):
             tgt = np.median(v.grab(a, b - a + 1), axis=0).astype(np.float32)
             rk = (warp_to(ring.astype(np.float32), AFF[k]) > 0.5) if attached else ring
             cms[k] = colfit(warp_to(P, AFF[k]), tgt, rk)
+        halo_thr = it.get("halo", 0) if mode == "ref" and not attached else 0      # opt-in: levels, e.g. 10
+        if halo_thr:
+            # the Japanese text's soft dark halo / shadow reaches past the glyph mask; left in the frame it draws
+            # dark ghost outlines of the glyphs around the patch. With clean frames the background under it is
+            # known: pixels next to the mask that the frames show darker than the clean plate predicts (on most
+            # colour keys) are the halo - the patch takes them in, with the same real pixels.
+            from .plate import mapc
+            from .cards import _connected_to
+            reach = int(it.get("halo_reach", 30))
+            band = dilate(m, reach) & ~m
+            ks = keys if len(keys) <= 8 else [keys[int(round(i * (len(keys) - 1) / 7))] for i in range(8)]
+            votes = np.zeros(coords.shape(), np.int32)
+            for k in ks:
+                a, b = max(f0, k - 1), min(f1, k + 1)
+                tgt = np.median(v.grab(a, b - a + 1), axis=0).astype(np.float32)
+                pred = mapc(warp_to(P, AFF[k]), cms[k])
+                votes += ((tgt - pred).mean(axis=2) < -halo_thr) & band
+            hl = votes >= max(1, int(np.ceil(0.6 * len(ks))))
+            hl = close(hl, 5, 5) & band
+            hl = hl & _connected_to(hl | m, m)
+            if hl.any():
+                m = m | hl
+                print(f"    halo: patch grows by {int(hl.sum())} px over the Japanese text's soft shadow", flush=True)
         if attached:
             need = dilate(m, 3)                # patch shape itself moves with the scene, no clip
             clip = None

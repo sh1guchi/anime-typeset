@@ -19,6 +19,7 @@
   set      -c episode.json id.key=value [@top=value ...] [--from patch.json] edit the config (JSON values; empty = remove)
   split    -c episode.json id                                             one item per card
   timing   -c episode.json [ids..] [--apply] [--pad 2]                   frames where the original text is on screen
+  lama-ab  -c episode.json id [..] [--zoom box]                          the plate with and without LaMa: sheet + seam
   add      -c episode.json --match <regex> [--preset song] [--prefix song] text items from translator lines (actor/style)
   sheet    -c episode.json [ids..] [--out f.jpg]                          middle frame of every built item on one image
   compact  file.ass [file.ass ...]                                        shrink built signs/subs in place, same picture
@@ -415,6 +416,60 @@ def cmd_timing(a):
         print(f"  frames changed: {n} item(s); rebuild them")
 
 
+def cmd_lama_ab(a):
+    """the same item with and without clean.fill "lama": original | without | with LaMa on the same frames (zoomed to
+    the sign), and the seam score of each patch - to keep LaMa only where it is better"""
+    import copy
+    import numpy as np
+    from PIL import Image
+    from tslib.ctx import Ctx
+    from tslib.builders import build_item
+    from tslib.assdoc import header, write_lines, ev_style
+    from tslib.text import parse_style
+    from tslib.inspect import check_frames, fit_area, seam_score, label, tile
+    ctx = Ctx(a.config)
+    v = ctx.video
+    for it in ctx.items(a.ids):
+        if it.get("type") != "plate":
+            print(f"[{it['id']}] not a plate - skipped"); continue
+        f0, f1 = it["frames"]
+        moving = isinstance(it.get("motion"), dict) and it["motion"].get("mode", "static") != "static"
+        frames = check_frames(f0, f1, moving)
+        res = {}
+        for name, fill in (("без LaMa", None), ("LaMa", "lama")):
+            v_it = copy.deepcopy(it)
+            v_it["clean"] = {**v_it.get("clean", {}), "fill": fill} if fill else {k: x for k, x in v_it.get("clean", {}).items() if k != "fill"}
+            print(f"[{it['id']}] building {name}...", flush=True)
+            data = build_item(ctx, v_it)
+            lines = data["lines"]
+            used = {ev_style(l) for l in lines}
+            styles = [l for l in ctx.all_style_lines if parse_style(l)["Name"] in used]
+            p = ctx.path("check", f"_ab_{it['id']}_{'lama' if fill else 'base'}.ass")
+            write_lines(p, header(it["id"], ctx.playres, v.ycbcr, styles) + lines)
+            pm = p.replace(".ass", "_mask.ass")
+            write_lines(pm, header(it["id"], ctx.playres, v.ycbcr, styles) + [l for l in lines if ev_style(l) == "Маска"])
+            res[name] = (p, seam_score(v, pm, frames), data.get("area"))
+        crop = fit_area(a.zoom and [int(c) for c in a.zoom.split(",")] or res["LaMa"][2] or [0, 0, 1920, 1080])
+        rows = []
+        for f in frames:
+            row = [Image.fromarray(v.grab(f, 1, crop=crop)[0])]
+            for name in ("без LaMa", "LaMa"):
+                p = v.render(res[name][0], [f], ctx.path("check", "_tmp"), prefix=f"ab_{name == 'LaMa'}", crop=crop)[0]
+                row.append(Image.open(p).convert("RGB"))
+            w1 = 640
+            row = [x.resize((w1, int(x.height * w1 / x.width)), Image.LANCZOS) for x in row]
+            c = Image.new("RGB", (w1 * 3 + 8, row[0].height))
+            for k, x in enumerate(row):
+                c.paste(x, (k * (w1 + 4), 0))
+            rows.append(label(c, f"{it['id']} {f}: original | without LaMa | LaMa"))
+        out = ctx.path("check", f"{it['id']}_lama_ab.jpg")
+        tile(rows, 1, out)
+        sb, sl = np.nanmean(res["без LaMa"][1]), np.nanmean(res["LaMa"][1])
+        print(f"[{it['id']}] seam (lower = less visible): without LaMa {sb:.2f}, with LaMa {sl:.2f} -> "
+              + ("LaMa better" if sl < sb - 0.2 else "LaMa worse" if sl > sb + 0.2 else "about the same")
+              + f"; look at {out} - keep LaMa only if it also looks better")
+
+
 def cmd_sheet(a):
     from tslib.ctx import Ctx
     from tslib.tools import contact_sheet
@@ -501,6 +556,8 @@ def main():
     p.add_argument("--apply", action="store_true", help="write the frames where the original is on screen")
     p.add_argument("--pad", type=float, default=2.0, help="seconds searched before / after the current frames")
     p.set_defaults(fn=cmd_timing)
+    p = sp.add_parser("lama-ab"); p.add_argument("-c", "--config", required=True); p.add_argument("ids", nargs="+")
+    p.add_argument("--zoom", help="x0,y0,x1,y1 crop (default: the sign's area)"); p.set_defaults(fn=cmd_lama_ab)
     p = sp.add_parser("add"); p.add_argument("-c", "--config", required=True)
     p.add_argument("--match", required=True, help="regex on the actor or style of the translator's lines")
     p.add_argument("--preset", default=None, help="layer set of the preset to restyle with (e.g. song)")

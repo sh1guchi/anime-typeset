@@ -124,3 +124,31 @@ def check_sheet(ctx, item, ass_path, out, frames=None, full=False, zoom=None, co
             ims.append(label(im, f"{item['id']} {f}"))
         os.remove(p)
     return tile(ims, 1 if not full or compare else 2, out)
+
+
+def seam_score(video, mask_ass, frames):
+    """how visible a patch's border is: render only the patch lines, find the patched region, compare the patch
+    colour just inside its border with the real frame just outside it, per 32 px cell (levels, lower = better)"""
+    import cv2, tempfile
+    d = tempfile.mkdtemp(prefix="tsseam_")
+    try:
+        paths = video.render(mask_ass, frames, d, prefix="seam")
+        out = []
+        for f, p in zip(frames, paths):
+            r = np.asarray(Image.open(p).convert("RGB"), np.float32)
+            o = video.grab(f, 1)[0].astype(np.float32)
+            M = (np.abs(r - o).max(axis=2) > 2).astype(np.uint8)
+            M = cv2.morphologyEx(M, cv2.MORPH_CLOSE, np.ones((9, 9), np.uint8))
+            inner = M.astype(bool) & ~cv2.erode(M, np.ones((5, 5), np.uint8)).astype(bool)
+            outer = cv2.dilate(M, np.ones((5, 5), np.uint8)).astype(bool) & ~M.astype(bool)
+            H, W = M.shape; cell = 32; diffs = []
+            for y in range(0, H, cell):
+                for x in range(0, W, cell):
+                    i_, o_ = inner[y:y + cell, x:x + cell], outer[y:y + cell, x:x + cell]
+                    if i_.sum() > 20 and o_.sum() > 20:
+                        diffs.append(np.abs(r[y:y + cell, x:x + cell][i_].mean(0) - o[y:y + cell, x:x + cell][o_].mean(0)).max())
+            out.append(float(np.mean(diffs)) if diffs else float("nan"))
+        return out
+    finally:
+        import shutil
+        shutil.rmtree(d, ignore_errors=True)
