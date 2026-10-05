@@ -12,6 +12,8 @@ from .assdoc import read_lines, section, ev_fields, t2cs
 from .cards import find_cards
 from .platefill import find_plates, stable as plate_stable
 from .motion import phase_track
+from .cuts import detect_cuts, drop_flashes, cut_runs   # noqa: F401 (re-exported for tests)
+from .timing import detect as timing_detect
 from .inspect import label, tile
 from .ctx import read_playres, read_wrapstyle
 from . import coords
@@ -45,47 +47,6 @@ def pos_of(t):
 
 
 SONGS_RE = r"(?i)(песн|song|lyric|karaoke|^op$|^ed$|opening|ending|insert)"
-
-
-def detect_cuts(video, a, b):
-    a = max(0, a)
-    G = video.grab(a, b - a + 1, w=256, h=144, gray=True).astype(np.float32)
-    G = 255.0 * np.sqrt(G / 255.0)      # lift shadows: cuts between dark shots count too
-    if len(G) < 2:
-        return []
-    diffs = np.abs(np.diff(G, axis=0)).mean(axis=(1, 2))
-    thr = max(18.0, 5 * float(np.median(diffs)))
-    return drop_flashes(G, a, [a + i + 1 for i, dv in enumerate(diffs) if dv > thr], thr)
-
-
-def drop_flashes(G, a, cuts, thr, gap=6):
-    """A flash (white/black frames, an explosion) fires a run of 'cuts' and the shot comes back the same: drop
-    such runs (the picture after the run matches the one before it). Runs that do lead elsewhere (a flash
-    transition, an animated logo) stay whole - snapping the sign timing needs every real jump."""
-    runs, out = [], []
-    for c in cuts:
-        if runs and c - runs[-1][-1] <= gap:
-            runs[-1].append(c)
-        else:
-            runs.append([c])
-    for r in runs:
-        if len(r) > 1:
-            before, after = G[r[0] - 1 - a], G[min(r[-1], a + len(G) - 1) - a]
-            if float(np.abs(after - before).mean()) < thr:
-                continue                                   # the same shot again: a flash, not a cut
-        out += r
-    return out
-
-
-def cut_runs(cuts, gap=6):
-    """for reading: 20326..20338 (13) instead of thirteen numbers"""
-    runs = []
-    for c in cuts:
-        if runs and c - runs[-1][-1] <= gap:
-            runs[-1].append(c)
-        else:
-            runs.append([c])
-    return ", ".join(str(r[0]) if len(r) == 1 else f"{r[0]}..{r[-1]} ({len(r)})" for r in runs)
 
 
 def is_song(p, songs_re):
@@ -403,34 +364,37 @@ def run(video_path, signs_path, work, force=False, songs_re=SONGS_RE):
         typeset = any(re.search(r"\\(pos|move|fr[xyz]?|fax|fay|clip|fn)", p[9]) for p in evs)
         name_for_id = next((t["parts"][-1] for t in texts if t["parts"]), "sign")
         iid = slug(name_for_id, used)
-        # contact sheet: around both ends + middle, plus the source typeset rendered over the middle frame
-        tw_, th_ = 640, int(round(640 * coords.AH / coords.AW))
-        frames = [s0 - 1, s0, mid, s1, s1 + 1]
-        ims = []
-        raw = {}
-        for f in frames:
-            raw[f] = v.grab(max(0, f), 1)[0]
-            im = Image.fromarray(raw[f]).resize((tw_, th_))
-            if f == mid:
-                d = ImageDraw.Draw(im)
-                for g in cards:
-                    d.rectangle([x * tw_ / coords.AW for x in g["box"]], outline=(0, 255, 0), width=2)
-                for b in boxes:
-                    if b:
-                        d.rectangle([x * tw_ / coords.AW for x in b], outline=(255, 128, 0), width=1)
-            tag = {s0 - 1: "before", s0: "first", mid: "mid", s1: "last", s1 + 1: "after"}[f]
-            ims.append(label(im, f"{f} {tag}"))
-        tmp = os.path.join(work, "analysis", "_src.ass")
-        with open(tmp, "w", encoding="utf-8-sig") as fh:
-            fh.write("\n".join(header + raws) + "\n")
-        try:
-            p_ = v.render(tmp, [mid], os.path.join(work, "analysis"), prefix="_src")[0]
-            ims.append(label(Image.open(p_).convert("RGB").resize((tw_, th_)), f"{mid} source typeset", (255, 160, 0)))
-            os.remove(p_)
-        except Exception as e:
-            print(f"    could not render the source lines: {e}")
-        sheet = os.path.join(work, "analysis", f"{iid}.jpg")
-        tile(ims, 3, sheet)
+        def sheet_for(s0, s1, mid):
+            # contact sheet: around both ends + middle, plus the source typeset rendered over the middle frame
+            tw_, th_ = 640, int(round(640 * coords.AH / coords.AW))
+            frames = [s0 - 1, s0, mid, s1, s1 + 1]
+            ims = []
+            raw = {}
+            for f in frames:
+                raw[f] = v.grab(max(0, f), 1)[0]
+                im = Image.fromarray(raw[f]).resize((tw_, th_))
+                if f == mid:
+                    d = ImageDraw.Draw(im)
+                    for g in cards:
+                        d.rectangle([x * tw_ / coords.AW for x in g["box"]], outline=(0, 255, 0), width=2)
+                    for b in boxes:
+                        if b:
+                            d.rectangle([x * tw_ / coords.AW for x in b], outline=(255, 128, 0), width=1)
+                tag = {s0 - 1: "before", s0: "first", mid: "mid", s1: "last", s1 + 1: "after"}[f]
+                ims.append(label(im, f"{f} {tag}"))
+            tmp = os.path.join(work, "analysis", "_src.ass")
+            with open(tmp, "w", encoding="utf-8-sig") as fh:
+                fh.write("\n".join(header + raws) + "\n")
+            try:
+                p_ = v.render(tmp, [mid], os.path.join(work, "analysis"), prefix="_src")[0]
+                ims.append(label(Image.open(p_).convert("RGB").resize((tw_, th_)), f"{mid} source typeset", (255, 160, 0)))
+                os.remove(p_)
+            except Exception as e:
+                print(f"    could not render the source lines: {e}")
+            sheet = os.path.join(work, "analysis", f"{iid}.jpg")
+            tile(ims, 3, sheet)
+            return raw
+        raw = sheet_for(s0, s1, mid)
         # draft item
         it = {"id": iid, "name": " / ".join(t["parts"][-1] for t in texts if t["parts"]), "frames": [s0, s1],
               "source_frames": [f0, f1], "source_lines": raws, "source_boxes": boxes}
@@ -491,6 +455,25 @@ def run(video_path, signs_path, work, force=False, songs_re=SONGS_RE):
             it["motion"] = "static" if all_fill else \
                 {"static": "static", "zoom": {"mode": "affine"}, "linear": {"mode": "affine"},
                  "path": {"mode": "affine"}}.get(mot["kind"], "TODO")
+        # timing from the picture: the frames where the original text is really on screen (cards, overlay plates)
+        tm = timing_detect(v, it, pad=int(round(float(v.fps) * 2)))
+        if tm and tm.get("hint"):
+            it["_timing"] = tm["hint"]
+            if tm["frames"] != it["frames"]:
+                print(f"    timing: the original is on screen {tm['frames'][0]}-{tm['frames'][1]} (translator {f0}-{f1}"
+                      + (f", snapped {s0}-{s1}" if [s0, s1] != [f0, f1] else "") + ")", flush=True)
+                it["frames"] = list(tm["frames"])
+                s0, s1 = it["frames"]; mid = (s0 + s1) // 2
+                inner = [c for c in detect_cuts(v, s0 - 1, s1) if s0 < c <= s1]
+                mot = motion_summary(v, s0, s1)             # the old range may have held another shot
+                if it.get("type") == "card":
+                    it["motion"], _ = card_motion(v, s0, s1, [c["box"] for c in it["cards"]])
+                elif isinstance(it.get("zones"), list):
+                    all_fill = all(isinstance(z, dict) and z.get("fill") == "auto" for z in it["zones"])
+                    it["clean"] = {"mode": "inpaint" if mot["kind"] == "static" or all_fill else "TODO inpaint|ref (+ref frame)"}
+                    it["motion"] = "static" if all_fill else                         {"static": "static", "zoom": {"mode": "affine"}, "linear": {"mode": "affine"},
+                         "path": {"mode": "affine"}}.get(mot["kind"], "TODO")
+                sheet_for(s0, s1, mid)
         items.append(it)
         report.append((iid, f0, f1, s0, s1, inner, mot, len(cards), typeset,
                        " | ".join(" / ".join(t["parts"]) for t in texts)))

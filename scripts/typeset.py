@@ -18,6 +18,7 @@
   probe    -c episode.json --frames a:b --box x0,y0,x1,y1 [--bg box]       glyph vs background stats -> detect thresholds
   set      -c episode.json id.key=value [@top=value ...] [--from patch.json] edit the config (JSON values; empty = remove)
   split    -c episode.json id                                             one item per card
+  timing   -c episode.json [ids..] [--apply] [--pad 2]                   frames where the original text is on screen
   add      -c episode.json --match <regex> [--preset song] [--prefix song] text items from translator lines (actor/style)
   sheet    -c episode.json [ids..] [--out f.jpg]                          middle frame of every built item on one image
   compact  file.ass [file.ass ...]                                        shrink built signs/subs in place, same picture
@@ -372,6 +373,48 @@ def cmd_add(a):
     print(f"  + {len(new)} item(s): {new[0]['id']} .. {new[-1]['id']}")
 
 
+def cmd_timing(a):
+    """when the original text is really on screen, per item; --apply writes `frames` (and the `_timing` hint)"""
+    import json
+    from tslib.ctx import Ctx
+    from tslib import timing
+    ctx = Ctx(a.config)
+    v = ctx.video
+    pad = int(round(float(v.fps) * a.pad))
+    found = {}
+    for it in ctx.items(a.ids):
+        tm = timing.detect(v, it, pad)
+        if tm is None:
+            why = "locked" if isinstance(it.get("timing"), dict) and it["timing"].get("lock") else                   "moving / no fixed region - give \"timing\": {\"box\": [x0,y0,x1,y1]} to judge it"
+            print(f"  {it['id']:30s} {it['frames'][0]}-{it['frames'][1]}  not judged ({why})")
+            continue
+        h, fr = tm["hint"], tm["frames"]
+        fi, fo = timing.fade_ms(v, h)
+        src = it.get("source_frames")
+        line = (f"  {it['id']:30s} {it['frames'][0]}-{it['frames'][1]}" + (f" (translator {src[0]}-{src[1]})" if src else "")
+                + (f"  ->  on screen {h['on_screen'][0]}-{h['on_screen'][1]}" if "on_screen" in h else "")
+                + (f", fades in {h['fade_in'][0]}-{h['fade_in'][1]} ({fi} ms)" if h.get("fade_in") else "")
+                + (f", fades out {h['fade_out'][0]}-{h['fade_out'][1]} ({fo} ms)" if h.get("fade_out") else "")
+                + (f"  [{tm['note']}]" if tm["note"] else ""))
+        if fr != it["frames"]:
+            line += f"  =>  frames {fr[0]}-{fr[1]}" + ("" if a.apply else " (use --apply)")
+        print(line)
+        found[it["id"]] = (fr, h)
+    if a.apply and found:
+        with open(a.config, encoding="utf-8") as fh:
+            c = json.load(fh)
+        n = 0
+        for it in c["items"]:
+            if it["id"] in found:
+                fr, h = found[it["id"]]
+                n += it["frames"] != fr
+                it["frames"] = fr
+                it["_timing"] = h
+        with open(a.config, "w", encoding="utf-8") as fh:
+            json.dump(c, fh, ensure_ascii=False, indent=1)
+        print(f"  frames changed: {n} item(s); rebuild them")
+
+
 def cmd_sheet(a):
     from tslib.ctx import Ctx
     from tslib.tools import contact_sheet
@@ -454,6 +497,10 @@ def main():
     p = sp.add_parser("set"); p.add_argument("-c", "--config", required=True); p.add_argument("assign", nargs="*")
     p.add_argument("--from", dest="from_", help="UTF-8 JSON patch {\"@\": {...}, \"items\": {id: {...}}}"); p.set_defaults(fn=cmd_set)
     p = sp.add_parser("split"); p.add_argument("-c", "--config", required=True); p.add_argument("id"); p.set_defaults(fn=cmd_split)
+    p = sp.add_parser("timing"); p.add_argument("-c", "--config", required=True); p.add_argument("ids", nargs="*")
+    p.add_argument("--apply", action="store_true", help="write the frames where the original is on screen")
+    p.add_argument("--pad", type=float, default=2.0, help="seconds searched before / after the current frames")
+    p.set_defaults(fn=cmd_timing)
     p = sp.add_parser("add"); p.add_argument("-c", "--config", required=True)
     p.add_argument("--match", required=True, help="regex on the actor or style of the translator's lines")
     p.add_argument("--preset", default=None, help="layer set of the preset to restyle with (e.g. song)")
