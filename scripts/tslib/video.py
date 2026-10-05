@@ -109,7 +109,14 @@ class Video:
 
     def render(self, ass_path, frames, outdir, prefix="r", crop=None, w=None, h=None, fontsdir=None, jobs=4):
         """PNG per frame with the script burned in (RGB, colour-correct). Returns paths."""
+        outdir = os.path.abspath(outdir)     # ffmpeg runs with cwd=outdir: a relative output path would double up
         os.makedirs(outdir, exist_ok=True)
+        final = outdir
+        if len(os.path.abspath(outdir)) > 180 and not fontsdir:
+            # ffmpeg runs with cwd=outdir (a drive letter in the subtitles= path breaks the filter parser);
+            # Windows refuses a cwd near MAX_PATH (WinError 267) - render in a short temp folder instead
+            import tempfile
+            outdir = tempfile.mkdtemp(prefix="tsr_")
         tmp = f"_{prefix}.ass"
         shutil.copyfile(ass_path, os.path.join(outdir, tmp))
         fd = os.path.relpath(fontsdir, outdir).replace("\\", "/") if fontsdir else None
@@ -126,7 +133,16 @@ class Video:
             return out
 
         with ThreadPoolExecutor(jobs) as ex:
-            return list(ex.map(one, frames))
+            paths = list(ex.map(one, frames))
+        if outdir != final:
+            moved = []
+            for p in paths:
+                q = os.path.join(final, os.path.basename(p))
+                shutil.move(p, q)
+                moved.append(q)
+            shutil.rmtree(outdir, ignore_errors=True)
+            paths = moved
+        return paths
 
     def audio_map(self):
         """-map arguments for the preview: the Japanese track when the file has one (releases carry several

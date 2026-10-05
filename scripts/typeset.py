@@ -18,9 +18,11 @@
   probe    -c episode.json --frames a:b --box x0,y0,x1,y1 [--bg box]       glyph vs background stats -> detect thresholds
   set      -c episode.json id.key=value [@top=value ...] [--from patch.json] edit the config (JSON values; empty = remove)
   split    -c episode.json id                                             one item per card
+  add      -c episode.json --match <regex> [--preset song] [--prefix song] text items from translator lines (actor/style)
   sheet    -c episode.json [ids..] [--out f.jpg]                          middle frame of every built item on one image
   compact  file.ass [file.ass ...]                                        shrink built signs/subs in place, same picture
-  (check also takes --zoom x0,y0,x1,y1 and --compare: original | result | difference)
+  (check also takes --zoom x0,y0,x1,y1, --compare: original | result | difference, and --with-others: the other
+   built signs on screen at the same frames)
 """
 import argparse, json, os, sys, time, subprocess
 
@@ -56,11 +58,21 @@ def cfg_path(ctx, key, default=None):
     return p if os.path.isabs(p) else os.path.join(ctx.work, p)
 
 
-def item_ass(ctx, it):
+def overlapping(ctx, it):
+    """other built items on screen at the same time as `it` (their frames overlap)"""
+    f0, f1 = it["frames"]
+    return [o for o in ctx.items() if o["id"] != it["id"] and o["frames"][0] <= f1 and o["frames"][1] >= f0
+            and ctx.load_lines(o["id"]) is not None]
+
+
+def item_ass(ctx, it, others=False):
     from tslib.assdoc import header, write_lines, ev_style
     from tslib.text import parse_style
     data = ctx.load_lines(it["id"])
-    lines = data["lines"]
+    lines = list(data["lines"])
+    if others:      # what the viewer really sees: every sign active at these frames, not this one alone
+        for o in overlapping(ctx, it):
+            lines += ctx.load_lines(o["id"])["lines"]
     used = {ev_style(l) for l in lines}
     # all styles: lines kept from the translator's file use its styles (alignment, margins, fonts)
     styles = [l for l in ctx.all_style_lines if parse_style(l)["Name"] in used]
@@ -88,7 +100,8 @@ def cmd_doctor(a):
 def cmd_analyze(a):
     from tslib import analyze
     os.makedirs(a.work, exist_ok=True)
-    p = analyze.run(a.video, a.signs, a.work, force=a.force)
+    p = analyze.run(a.video, a.signs, a.work, force=a.force,
+                    songs_re=analyze.SONGS_RE if a.songs is None else a.songs)
     print(f"draft config: {p}\nsheets: {os.path.join(a.work, 'analysis')}\nsummary: {os.path.join(a.work, 'analysis.md')}")
 
 
@@ -164,7 +177,11 @@ def cmd_check(a):
             suffix += "_cmp"
         if a.zoom:
             suffix += "_zoom"
-        out = check_sheet(ctx, it, item_ass(ctx, it), ctx.path("check", f"{it['id']}{suffix}.jpg"),
+        if a.with_others:
+            suffix += "_all"
+            ov = overlapping(ctx, it)
+            print(f"[{it['id']}] together with: {', '.join(o['id'] for o in ov) or 'nothing else'}")
+        out = check_sheet(ctx, it, item_ass(ctx, it, others=a.with_others), ctx.path("check", f"{it['id']}{suffix}.jpg"),
                           frames=frames_arg(a.frames), full=a.full, zoom=box_arg(a.zoom), compare=a.compare)
         print(out)
 
@@ -178,6 +195,21 @@ def cmd_assemble(a):
         raise SystemExit("set 'out' in episode.json or pass --out")
     n = assemble(ctx, out)
     print(f"{n} events -> {out} ({os.path.getsize(out) // 1024} KB)")
+    # signs that share the screen: checks render each alone, so a clash (two lines on one spot) shows only here
+    seen = set()
+    for it in ctx.items():
+        if ctx.load_lines(it["id"]) is None:
+            continue
+        A = ctx.load_lines(it["id"]).get("area")
+        for o in overlapping(ctx, it):
+            B = ctx.load_lines(o["id"]).get("area")
+            key = tuple(sorted((it["id"], o["id"])))
+            if key in seen or not A or not B:
+                continue
+            seen.add(key)
+            if A[0] < B[2] and B[0] < A[2] and A[1] < B[3] and B[1] < A[3]:
+                print(f"  on screen together and in the same area: {it['id']} + {o['id']} - look at "
+                      f"`TS check -c ... {it['id']} --with-others`")
 
 
 def cmd_preview(a):
@@ -217,8 +249,10 @@ def cmd_merge(a):
           + (f" / styles {drop}" if drop else "") + f"); inserted {r['inserted']} lines in {r['blocks']} blocks"
           + (f"; unused styles removed {r['styles_removed']}" if r["styles_removed"] else "")
           + (f"; dialogue layers +{r['dialogue_bump']}" if r["dialogue_bump"] else "") + (f"; backup {r['backup']}" if r["backup"] else ""))
-    ok = r["dialogue_before"] == r["dialogue_after"]
-    print(f"dialogue lines: {r['dialogue_before']} -> {r['dialogue_after']}" + ("  OK" if ok else "  <-- CHANGED, check the subs!"))
+    ok = r["dialogue_before"] == r["dialogue_after"] and r["dialogue_same"]
+    print(f"dialogue lines: {r['dialogue_before']} -> {r['dialogue_after']}" + (
+        "  OK: text, times, style, actor and order unchanged" + (f" (only Layer +{r['dialogue_bump']})" if r["dialogue_bump"] else "")
+        if ok else f"  <-- CHANGED (first difference at dialogue line {r['dialogue_diff']}), check the subs!"))
 
 
 def _video(a):
@@ -314,6 +348,30 @@ def cmd_split(a):
     split_item(a.config, a.id)
 
 
+def cmd_add(a):
+    """items from the translator's lines by actor/style (songs, credits...): one `type: text` item per line"""
+    import json
+    from tslib.ctx import Ctx
+    from tslib import analyze
+    from tslib.assdoc import ev_fields
+    ctx = Ctx(a.config)
+    c = ctx.cfg
+    have = {l for i in c["items"] for l in i.get("source_lines", [])}
+    evs = [l for l in (c.get("source_events") or []) if l not in have and analyze.is_song(ev_fields(l)[1], a.match)]
+    if not evs:
+        raise SystemExit(f"no translator line matches {a.match!r} (actor or style) that is not in an item already")
+    used = {i["id"] for i in c["items"]}
+    new = analyze.song_items(ctx.video, evs, used, bool(a.preset) and a.preset in ctx.preset, set_name=a.preset or "song",
+                             prefix=a.prefix, label=a.label)
+    if a.preset and a.preset not in ctx.preset:
+        print(f"  preset has no set {a.preset!r}: the lines are kept as the translator's ({{\"source\": true}})")
+    c["items"] += new
+    c["items"].sort(key=lambda i: i["frames"][0])
+    with open(a.config, "w", encoding="utf-8") as fh:
+        json.dump(c, fh, ensure_ascii=False, indent=1)
+    print(f"  + {len(new)} item(s): {new[0]['id']} .. {new[-1]['id']}")
+
+
 def cmd_sheet(a):
     from tslib.ctx import Ctx
     from tslib.tools import contact_sheet
@@ -351,7 +409,10 @@ def main():
     sp = ap.add_subparsers(dest="cmd", required=True)
     sp.add_parser("doctor").set_defaults(fn=cmd_doctor)
     p = sp.add_parser("analyze"); p.add_argument("--video", required=True); p.add_argument("--signs", required=True)
-    p.add_argument("--work", required=True); p.add_argument("--force", action="store_true"); p.set_defaults(fn=cmd_analyze)
+    p.add_argument("--work", required=True); p.add_argument("--force", action="store_true")
+    p.add_argument("--songs", default=None, help="regex on actor/style of song lines (not analysed, one text item each); "
+                   "default: Песня/song/lyric/karaoke/OP/ED/opening/ending/insert; \"\" = analyse everything")
+    p.set_defaults(fn=cmd_analyze)
     for name, fn in (("build", cmd_build), ("check", cmd_check), ("preview", cmd_preview)):
         p = sp.add_parser(name); p.add_argument("-c", "--config", required=True); p.add_argument("ids", nargs="*")
         if name == "build":
@@ -360,6 +421,7 @@ def main():
         if name == "check":
             p.add_argument("--frames"); p.add_argument("--full", action="store_true")
             p.add_argument("--zoom", help="x0,y0,x1,y1 crop to enlarge"); p.add_argument("--compare", action="store_true")
+            p.add_argument("--with-others", action="store_true", help="render the other signs on screen at the same frames too")
         if name == "preview":
             p.add_argument("--ass"); p.add_argument("--out")
         p.set_defaults(fn=fn)
@@ -392,6 +454,10 @@ def main():
     p = sp.add_parser("set"); p.add_argument("-c", "--config", required=True); p.add_argument("assign", nargs="*")
     p.add_argument("--from", dest="from_", help="UTF-8 JSON patch {\"@\": {...}, \"items\": {id: {...}}}"); p.set_defaults(fn=cmd_set)
     p = sp.add_parser("split"); p.add_argument("-c", "--config", required=True); p.add_argument("id"); p.set_defaults(fn=cmd_split)
+    p = sp.add_parser("add"); p.add_argument("-c", "--config", required=True)
+    p.add_argument("--match", required=True, help="regex on the actor or style of the translator's lines")
+    p.add_argument("--preset", default=None, help="layer set of the preset to restyle with (e.g. song)")
+    p.add_argument("--prefix", default="song"); p.add_argument("--label", default="Песня: "); p.set_defaults(fn=cmd_add)
     p = sp.add_parser("sheet"); p.add_argument("-c", "--config", required=True); p.add_argument("ids", nargs="*")
     p.add_argument("--out"); p.set_defaults(fn=cmd_sheet)
     p = sp.add_parser("compact"); p.add_argument("files", nargs="+"); p.set_defaults(fn=cmd_compact)

@@ -175,13 +175,18 @@ def apply_patch(c, patch):
     """patch file (UTF-8 JSON, written with an editor - no shell quoting, Cyrillic safe):
     {"@": {top-level keys}, "items": {"<id>": {keys}}}; a key set to null is removed, other values replace
     the old ones whole (dicts are not merged - give the full "text"/"detect"/...); an unknown id with a
-    "frames" key is appended as a new item"""
+    "frames" key is appended as a new item; "<id>": null removes the item (e.g. after joining two signs)"""
     for k, v in (patch.get("@") or {}).items():
         if v is None:
             c.pop(k, None)
         else:
             c[k] = v
     for iid, fields in (patch.get("items") or {}).items():
+        if fields is None:
+            n = len(c["items"])
+            c["items"] = [i for i in c["items"] if i["id"] != iid]
+            print(f"  - item {iid}" + ("" if len(c["items"]) < n else " (not found)"))
+            continue
         node = next((i for i in c["items"] if i["id"] == iid), None)
         if node is None:
             if "frames" not in fields:

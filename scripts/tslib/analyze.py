@@ -44,6 +44,9 @@ def pos_of(t):
     return (float(m.group(1)), float(m.group(2))) if m else None
 
 
+SONGS_RE = r"(?i)(песн|song|lyric|karaoke|^op$|^ed$|opening|ending|insert)"
+
+
 def detect_cuts(video, a, b):
     a = max(0, a)
     G = video.grab(a, b - a + 1, w=256, h=144, gray=True).astype(np.float32)
@@ -52,7 +55,73 @@ def detect_cuts(video, a, b):
         return []
     diffs = np.abs(np.diff(G, axis=0)).mean(axis=(1, 2))
     thr = max(18.0, 5 * float(np.median(diffs)))
-    return [a + i + 1 for i, dv in enumerate(diffs) if dv > thr]
+    return drop_flashes(G, a, [a + i + 1 for i, dv in enumerate(diffs) if dv > thr], thr)
+
+
+def drop_flashes(G, a, cuts, thr, gap=6):
+    """A flash (white/black frames, an explosion) fires a run of 'cuts' and the shot comes back the same: drop
+    such runs (the picture after the run matches the one before it). Runs that do lead elsewhere (a flash
+    transition, an animated logo) stay whole - snapping the sign timing needs every real jump."""
+    runs, out = [], []
+    for c in cuts:
+        if runs and c - runs[-1][-1] <= gap:
+            runs[-1].append(c)
+        else:
+            runs.append([c])
+    for r in runs:
+        if len(r) > 1:
+            before, after = G[r[0] - 1 - a], G[min(r[-1], a + len(G) - 1) - a]
+            if float(np.abs(after - before).mean()) < thr:
+                continue                                   # the same shot again: a flash, not a cut
+        out += r
+    return out
+
+
+def cut_runs(cuts, gap=6):
+    """for reading: 20326..20338 (13) instead of thirteen numbers"""
+    runs = []
+    for c in cuts:
+        if runs and c - runs[-1][-1] <= gap:
+            runs[-1].append(c)
+        else:
+            runs.append([c])
+    return ", ".join(str(r[0]) if len(r) == 1 else f"{r[0]}..{r[-1]} ({len(r)})" for r in runs)
+
+
+def is_song(p, songs_re):
+    """song lines (OP/ED/insert lyrics) kept in the signs file: by actor or style name"""
+    return bool(songs_re) and bool(re.search(songs_re, p[4] or "") or re.search(songs_re, p[3] or ""))
+
+
+def song_items(video, raws, used, preset_has_song, set_name="song", prefix="song", label="Песня: "):
+    """one `type: text` item per line (songs, or any group via `TS add`): the translator's timing, no analysis.
+    With the layer set `set_name` in the preset the line is restyled with it (top centre - move it off the
+    credits by eye on `TS sheet`), else the translator's line is kept as is ({"source": true})."""
+    items = []
+    for k, l in enumerate(raws, 1):
+        _, p = ev_fields(l)
+        f0 = video.frame_at(t2cs(p[1]) / 100); f1 = video.frame_at(t2cs(p[2]) / 100) - 1
+        txt = "\\N".join(text_parts(p[9]))
+        iid = f"{prefix}-{k:02d}"
+        while iid in used:
+            iid += "x"
+        used.add(iid)
+        it = {"id": iid, "name": label + txt.replace("\\N", " "), "type": "text", "frames": [f0, f1],
+              "source_frames": [f0, f1], "source_lines": [l]}
+        if preset_has_song:
+            it["text"] = {"text": txt, "preset": set_name, "pos": [coords.AW // 2, 34], "an": 8, "fade": [180, 180]}
+            it["area"] = [0, 0, coords.AW, int(coords.AH / 3)]
+        else:
+            it["text"] = {"source": True}
+        items.append(it)
+    return items
+
+
+def positioned(evs):
+    """do the translator's lines carry positions at all? CR typesets TV signs (\\pos, \\move, \\clip ...); for
+    films it often leaves every sign as a dialogue-style line on top centre ({\\an8}, no \\pos) - then the
+    rendered boxes are just the default placement and say nothing about where the original text is"""
+    return any(re.search(r"\\(pos|move|clip|iclip|org)\(", p[9]) for p in evs)
 
 
 def motion_summary(video, a, b):
@@ -286,7 +355,7 @@ def card_motion(v, s0, s1, boxes):
     return m, res
 
 
-def run(video_path, signs_path, work, force=False):
+def run(video_path, signs_path, work, force=False, songs_re=SONGS_RE):
     os.makedirs(os.path.join(work, "analysis"), exist_ok=True)
     v = Video(video_path)
     px, py = read_playres(signs_path)
@@ -297,8 +366,20 @@ def run(video_path, signs_path, work, force=False):
     e0, e1 = section(lines, "[Events]")
     raw_events = [l for l in lines[e0 + 2:e1] if l.startswith("Dialogue:")]
     styles = [l for l in lines if l.startswith("Style:")]
+    from .ctx import guess_preset, load_preset
+    preset = guess_preset(os.path.basename(v.path), os.path.basename(signs_path), os.path.basename(os.path.dirname(v.path)))
+    song_raws = [l for l in raw_events if is_song(ev_fields(l)[1], songs_re)]
+    sign_raws = [l for l in raw_events if l not in song_raws]
+    if song_raws:
+        print(f"  {len(song_raws)} song line(s) (actor/style matches {songs_re!r}) are not analysed: one `type: text` "
+              f"item each (song-NN); pass --songs \"\" to analyse them as signs", flush=True)
+    has_pos = positioned([ev_fields(l)[1] for l in sign_raws])
+    if sign_raws and not has_pos:
+        print("  the translator's signs carry no \\pos/\\move/\\clip (default placement, e.g. CR films: top centre): "
+              "their boxes say nothing about the original - zones are not searched, items are drafted as "
+              "TODO text|plate; find the Japanese on the sheets", flush=True)
     groups = {}
-    for l in raw_events:
+    for l in sign_raws:
         _, p = ev_fields(l)
         groups.setdefault((t2cs(p[1]), t2cs(p[2])), []).append(l)
     used, items, report = set(), [], []
@@ -381,7 +462,7 @@ def run(video_path, signs_path, work, force=False):
             # the translator often puts the text next to the original (CR: above / below it): find the glyphs
             zones, pols, zpol = [], [], {}
             for b in boxes:
-                if not b:
+                if not b or not has_pos:      # unpositioned lines: the box is the default placement, not a hint
                     continue
                 gz = glyph_zone(med, b)
                 if gz:
@@ -414,14 +495,17 @@ def run(video_path, signs_path, work, force=False):
         report.append((iid, f0, f1, s0, s1, inner, mot, len(cards), typeset,
                        " | ".join(" / ".join(t["parts"]) for t in texts)))
         print(f"  {iid}: frames {s0}-{s1} (source {f0}-{f1}), motion {mot['kind']} {mot['shift']} scale {mot['scale']}, "
-              f"cards {len(cards)}, cuts inside {inner}", flush=True)
-    for f in ("_box.ass", "_src.ass"):
+              f"cards {len(cards)}, cuts inside [{cut_runs(inner)}]", flush=True)
+    for f in ("_box.ass", "_src.ass", "__src.ass"):   # render copies _src.ass as _<prefix>.ass
         try:
             os.remove(os.path.join(work, "analysis", f))
         except OSError:
             pass
-    from .ctx import guess_preset
-    preset = guess_preset(os.path.basename(v.path), os.path.basename(signs_path), os.path.basename(os.path.dirname(v.path)))
+    if song_raws:
+        has_song = "song" in load_preset(preset)
+        items += song_items(v, song_raws, used, has_song)
+        print(f"  songs: {len(song_raws)} item(s) " + ("restyled with the preset's `song`" if has_song else
+              "kept as the translator's lines ({\"source\": true}) - the preset has no `song` set yet"), flush=True)
     print(f"  preset: {preset}" + ("  (no title preset matched - set one or start from default)" if preset == "default" else ""))
     cfg = {"video": v.path, "source_signs": os.path.abspath(signs_path), "preset": preset,
            "playres": [px, py], "out": "TODO", "source_styles": styles, "source_events": raw_events,
@@ -434,8 +518,16 @@ def run(video_path, signs_path, work, force=False):
     md = ["| id | frames (src) | snapped | cuts inside | motion | cards | src typeset | text |",
           "|---|---|---|---|---|---|---|---|"]
     for iid, f0, f1, s0, s1, inner, mot, nc, ts, txt in report:
-        md.append(f"| {iid} | {f0}-{f1} | {s0}-{s1} | {inner or ''} | {mot['kind']} {mot['shift']} s={mot['scale']} "
+        md.append(f"| {iid} | {f0}-{f1} | {s0}-{s1} | {cut_runs(inner)} | {mot['kind']} {mot['shift']} s={mot['scale']} "
                   f"r={mot['residual']} in={mot.get('inliers')} | {nc} | {'yes' if ts else ''} | {txt} |")
+    notes = []
+    if sign_raws and not has_pos:
+        notes.append("**The translator's signs carry no positions** (default placement, e.g. CR top centre): source "
+                     "boxes are not hints, zones were not searched - find every original on the sheets.")
+    if song_raws:
+        notes.append(f"**{len(song_raws)} song lines** (actor/style matches `{songs_re}`) were not analysed: items "
+                     f"`song-01`..`song-{len(song_raws):02d}` (`type: text`). Check them on `TS sheet` against credits.")
     with open(os.path.join(work, "analysis.md"), "w", encoding="utf-8") as fh:
-        fh.write(f"video: {v.path}\n\n{v.width}x{v.height} @ {float(v.fps):.3f} fps, matrix {v.ycbcr}\n\n" + "\n".join(md) + "\n")
+        fh.write(f"video: {v.path}\n\n{v.width}x{v.height} @ {float(v.fps):.3f} fps, matrix {v.ycbcr}\n\n"
+                 + "".join(n + "\n\n" for n in notes) + "\n".join(md) + "\n")
     return dst

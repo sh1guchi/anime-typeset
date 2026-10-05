@@ -1,0 +1,1472 @@
+{
+ "_comment": "Черновик TS analyze для фильма Kimetsu no Yaiba: Mugenjou-hen 1 (только надписи, без песен) - вход tests/check_analyze.py.",
+ "video": "../../Kimetsu no Yaiba Movie 1 Mugenjou-hen - Akaza Sairai.mkv",
+ "source_signs": "../../надписи/исходники/Kimetsu no Yaiba Movie 1 Mugenjou-hen - Akaza Sairai.надписи.ass",
+ "preset": "default",
+ "playres": [
+  640,
+  360
+ ],
+ "out": "TODO",
+ "source_wrapstyle": 0,
+ "items": [
+  {
+   "id": "budda-amida-moe-pribezhi",
+   "name": "БУДДА АМИДА — МОЁ ПРИБЕЖИЩЕ",
+   "frames": [
+    1368,
+    1597
+   ],
+   "source_frames": [
+    1367,
+    1597
+   ],
+   "source_lines": [
+    "Dialogue: 0,0:00:56.98,0:01:06.61,style.center,НАДПИСЬ,0,0,0,,{\\an8}БУДДА АМИДА — МОЁ ПРИБЕЖИЩЕ"
+   ],
+   "source_boxes": [
+    [
+     428,
+     71,
+     1493,
+     147
+    ]
+   ],
+   "type": "plate",
+   "zones": [
+    [
+     916,
+     307,
+     999,
+     410
+    ]
+   ],
+   "text": {
+    "text": "БУДДА АМИДА — МОЁ ПРИБЕЖИЩЕ",
+    "preset": "sign"
+   },
+   "detect": {
+    "polarity": "dark"
+   },
+   "clean": {
+    "mode": "TODO inpaint|ref (+ref frame)"
+   },
+   "motion": "TODO"
+  },
+  {
+   "id": "beskonechnyy-zamok",
+   "name": "БЕСКОНЕЧНЫЙ ЗАМОК",
+   "frames": [
+    5224,
+    5348
+   ],
+   "source_frames": [
+    5224,
+    5348
+   ],
+   "source_lines": [
+    "Dialogue: 0,0:03:37.86,0:03:43.09,style.center,НАДПИСЬ,0,0,0,,{\\an8}DEMON SLAYER: KIMETSU NO YAIBA.\\NБЕСКОНЕЧНЫЙ ЗАМОК"
+   ],
+   "source_boxes": [
+    [
+     420,
+     79,
+     1500,
+     202
+    ]
+   ],
+   "type": "plate",
+   "zones": [
+    [
+     841,
+     444,
+     1160,
+     584
+    ]
+   ],
+   "text": {
+    "text": "DEMON SLAYER: KIMETSU NO YAIBA.\\NБЕСКОНЕЧНЫЙ ЗАМОК",
+    "preset": "sign"
+   },
+   "detect": {
+    "polarity": "light"
+   },
+   "clean": {
+    "mode": "TODO inpaint|ref (+ref frame)"
+   },
+   "motion": "TODO"
+  },
+  {
+   "id": "chast-1-akadza-vozvrasch",
+   "name": "ЧАСТЬ 1: АКАДЗА ВОЗВРАЩАЕТСЯ",
+   "frames": [
+    5352,
+    5414
+   ],
+   "source_frames": [
+    5352,
+    5414
+   ],
+   "source_lines": [
+    "Dialogue: 0,0:03:43.22,0:03:45.81,style.center,НАДПИСЬ,0,0,0,,{\\an8}ЧАСТЬ 1: АКАДЗА ВОЗВРАЩАЕТСЯ"
+   ],
+   "source_boxes": [
+    [
+     447,
+     79,
+     1471,
+     147
+    ]
+   ],
+   "type": "plate",
+   "zones": [
+    [
+     958,
+     259,
+     1255,
+     416
+    ]
+   ],
+   "text": {
+    "text": "ЧАСТЬ 1: АКАДЗА ВОЗВРАЩАЕТСЯ",
+    "preset": "sign"
+   },
+   "detect": {
+    "polarity": "dark"
+   },
+   "clean": {
+    "mode": "TODO inpaint|ref (+ref frame)"
+   },
+   "motion": "TODO"
+  },
+  {
+   "id": "istreblenie",
+   "name": "ИСТРЕБЛЕНИЕ",
+   "frames": [
+    8018,
+    8178
+   ],
+   "source_frames": [
+    8018,
+    8178
+   ],
+   "source_lines": [
+    "Dialogue: 0,0:05:34.39,0:05:41.13,style.center,НАДПИСЬ,0,0,0,,{\\an8}ИСТРЕБЛЕНИЕ"
+   ],
+   "source_boxes": [
+    [
+     738,
+     79,
+     1184,
+     136
+    ]
+   ],
+   "type": "plate",
+   "zones": [
+    [
+     998,
+     440,
+     1057,
+     518
+    ]
+   ],
+   "text": {
+    "text": "ИСТРЕБЛЕНИЕ",
+    "preset": "sign"
+   },
+   "detect": {
+    "polarity": "dark"
+   },
+   "clean": {
+    "mode": "TODO inpaint|ref (+ref frame)"
+   },
+   "motion": "TODO"
+  },
+  {
+   "id": "istreblenie-demonov",
+   "name": "ИСТРЕБЛЕНИЕ ДЕМОНОВ",
+   "frames": [
+    8379,
+    8403
+   ],
+   "source_frames": [
+    8379,
+    8403
+   ],
+   "source_lines": [
+    "Dialogue: 0,0:05:49.45,0:05:50.50,style.center,НАДПИСЬ,0,0,0,,{\\an8}ИСТРЕБЛЕНИЕ ДЕМОНОВ"
+   ],
+   "source_boxes": [
+    [
+     578,
+     79,
+     1343,
+     145
+    ]
+   ],
+   "type": "plate",
+   "zones": [
+    [
+     994,
+     0,
+     1049,
+     127
+    ]
+   ],
+   "text": {
+    "text": "ИСТРЕБЛЕНИЕ ДЕМОНОВ",
+    "preset": "sign"
+   },
+   "detect": {
+    "polarity": "light"
+   },
+   "clean": {
+    "mode": "TODO inpaint|ref (+ref frame)"
+   },
+   "motion": "TODO"
+  },
+  {
+   "id": "ubiystvo",
+   "name": "УБИЙСТВО",
+   "frames": [
+    16389,
+    16508
+   ],
+   "source_frames": [
+    16389,
+    16507
+   ],
+   "source_lines": [
+    "Dialogue: 0,0:11:23.54,0:11:28.49,style.center,НАДПИСЬ,0,0,0,,{\\an8}УБИЙСТВО"
+   ],
+   "source_boxes": [
+    [
+     791,
+     70,
+     1126,
+     136
+    ]
+   ],
+   "type": "plate",
+   "zones": [
+    [
+     1107,
+     442,
+     1192,
+     508
+    ]
+   ],
+   "text": {
+    "text": "УБИЙСТВО",
+    "preset": "sign"
+   },
+   "detect": {
+    "polarity": "light"
+   },
+   "clean": {
+    "mode": "TODO inpaint|ref (+ref frame)"
+   },
+   "motion": "TODO"
+  },
+  {
+   "id": "vtoraya-molodaya-luna",
+   "name": "ВТОРАЯ МОЛОДАЯ ЛУНА",
+   "frames": [
+    20329,
+    20402
+   ],
+   "source_frames": [
+    20329,
+    20401
+   ],
+   "source_lines": [
+    "Dialogue: 0,0:14:07.86,0:14:10.90,style.center,НАДПИСЬ,0,0,0,,{\\an8}ВТОРАЯ МОЛОДАЯ ЛУНА"
+   ],
+   "source_boxes": [
+    [
+     590,
+     79,
+     1334,
+     145
+    ]
+   ],
+   "type": "plate",
+   "zones": [
+    [
+     511,
+     177,
+     681,
+     547
+    ]
+   ],
+   "text": {
+    "text": "ВТОРАЯ МОЛОДАЯ ЛУНА",
+    "preset": "sign"
+   },
+   "detect": {
+    "polarity": "light"
+   },
+   "clean": {
+    "mode": "TODO inpaint|ref (+ref frame)"
+   },
+   "motion": "TODO"
+  },
+  {
+   "id": "istreblenie-demonov-2",
+   "name": "ИСТРЕБЛЕНИЕ ДЕМОНОВ",
+   "frames": [
+    21719,
+    21940
+   ],
+   "source_frames": [
+    21718,
+    21939
+   ],
+   "source_lines": [
+    "Dialogue: 0,0:15:05.81,0:15:15.06,style.center,НАДПИСЬ,0,0,0,,{\\an8}ИСТРЕБЛЕНИЕ ДЕМОНОВ"
+   ],
+   "source_boxes": [
+    [
+     578,
+     79,
+     1343,
+     145
+    ]
+   ],
+   "type": "plate",
+   "zones": [
+    [
+     685,
+     193,
+     827,
+     347
+    ]
+   ],
+   "text": {
+    "text": "ИСТРЕБЛЕНИЕ ДЕМОНОВ",
+    "preset": "sign"
+   },
+   "detect": {
+    "polarity": "light"
+   },
+   "clean": {
+    "mode": "TODO inpaint|ref (+ref frame)"
+   },
+   "motion": "TODO"
+  },
+  {
+   "id": "shestaya-molodaya-luna",
+   "name": "ШЕСТАЯ МОЛОДАЯ ЛУНА",
+   "frames": [
+    54604,
+    54780
+   ],
+   "source_frames": [
+    54603,
+    54779
+   ],
+   "source_lines": [
+    "Dialogue: 0,0:37:57.37,0:38:04.76,style.center,НАДПИСЬ,0,0,0,,{\\an8}ШЕСТАЯ МОЛОДАЯ ЛУНА"
+   ],
+   "source_boxes": [
+    [
+     585,
+     79,
+     1340,
+     145
+    ]
+   ],
+   "type": "plate",
+   "zones": [
+    [
+     1199,
+     292,
+     1324,
+     382
+    ]
+   ],
+   "text": {
+    "text": "ШЕСТАЯ МОЛОДАЯ ЛУНА",
+    "preset": "sign"
+   },
+   "detect": {
+    "polarity": "dark"
+   },
+   "clean": {
+    "mode": "TODO inpaint|ref (+ref frame)"
+   },
+   "motion": "TODO"
+  },
+  {
+   "id": "43-y-vertikalnyy-uroven",
+   "name": "43-Й ВЕРТИКАЛЬНЫЙ УРОВЕНЬ",
+   "frames": [
+    59661,
+    59726
+   ],
+   "source_frames": [
+    59662,
+    59725
+   ],
+   "source_lines": [
+    "Dialogue: 0,0:41:28.39,0:41:31.05,style.center,НАДПИСЬ,0,0,0,,{\\an8}43-Й ВЕРТИКАЛЬНЫЙ УРОВЕНЬ"
+   ],
+   "source_boxes": [
+    [
+     490,
+     70,
+     1429,
+     136
+    ]
+   ],
+   "type": "plate",
+   "zones": [
+    [
+     1494,
+     0,
+     1586,
+     52
+    ]
+   ],
+   "text": {
+    "text": "43-Й ВЕРТИКАЛЬНЫЙ УРОВЕНЬ",
+    "preset": "sign"
+   },
+   "detect": {
+    "polarity": "dark"
+   },
+   "clean": {
+    "mode": "TODO inpaint|ref (+ref frame)"
+   },
+   "motion": "TODO"
+  },
+  {
+   "id": "istreblenie-2",
+   "name": "ИСТРЕБЛЕНИЕ",
+   "frames": [
+    66659,
+    66769
+   ],
+   "source_frames": [
+    66658,
+    66768
+   ],
+   "source_lines": [
+    "Dialogue: 0,0:46:20.17,0:46:24.82,style.center,НАДПИСЬ,0,0,0,,{\\an8}ИСТРЕБЛЕНИЕ"
+   ],
+   "source_boxes": [
+    [
+     738,
+     79,
+     1184,
+     136
+    ]
+   ],
+   "type": "plate",
+   "zones": [
+    [
+     886,
+     16,
+     1143,
+     169
+    ]
+   ],
+   "text": {
+    "text": "ИСТРЕБЛЕНИЕ",
+    "preset": "sign"
+   },
+   "detect": {
+    "polarity": "dark"
+   },
+   "clean": {
+    "mode": "TODO inpaint|ref (+ref frame)"
+   },
+   "motion": {
+    "mode": "affine"
+   }
+  },
+  {
+   "id": "pervaya",
+   "name": "ПЕРВАЯ",
+   "frames": [
+    68365,
+    68490
+   ],
+   "source_frames": [
+    68364,
+    68489
+   ],
+   "source_lines": [
+    "Dialogue: 0,0:47:31.32,0:47:36.58,style.center,НАДПИСЬ,0,0,0,,{\\an8}ПЕРВАЯ"
+   ],
+   "source_boxes": [
+    [
+     837,
+     80,
+     1083,
+     135
+    ]
+   ],
+   "type": "plate",
+   "zones": [
+    [
+     740,
+     282,
+     907,
+     425
+    ]
+   ],
+   "text": {
+    "text": "ПЕРВАЯ",
+    "preset": "sign"
+   },
+   "detect": {
+    "polarity": "dark"
+   },
+   "clean": {
+    "mode": "TODO inpaint|ref (+ref frame)"
+   },
+   "motion": {
+    "mode": "affine"
+   }
+  },
+  {
+   "id": "tretya-molodaya-luna",
+   "name": "ТРЕТЬЯ МОЛОДАЯ ЛУНА",
+   "frames": [
+    91951,
+    92008
+   ],
+   "source_frames": [
+    91951,
+    92007
+   ],
+   "source_lines": [
+    "Dialogue: 0,1:03:55.09,1:03:57.46,style.center,НАДПИСЬ,0,0,0,,{\\an8}ТРЕТЬЯ МОЛОДАЯ ЛУНА"
+   ],
+   "source_boxes": [
+    [
+     592,
+     79,
+     1329,
+     145
+    ]
+   ],
+   "type": "plate",
+   "zones": [
+    [
+     473,
+     375,
+     649,
+     527
+    ]
+   ],
+   "text": {
+    "text": "ТРЕТЬЯ МОЛОДАЯ ЛУНА",
+    "preset": "sign"
+   },
+   "detect": {
+    "polarity": "dark"
+   },
+   "clean": {
+    "mode": "TODO inpaint|ref (+ref frame)"
+   },
+   "motion": {
+    "mode": "affine"
+   }
+  },
+  {
+   "id": "60-y-vertikalnyy-uroven",
+   "name": "60-Й ВЕРТИКАЛЬНЫЙ УРОВЕНЬ",
+   "frames": [
+    95082,
+    95174
+   ],
+   "source_frames": [
+    95081,
+    95173
+   ],
+   "source_lines": [
+    "Dialogue: 0,1:06:05.65,1:06:09.52,style.center,НАДПИСЬ,0,0,0,,{\\an8}60-Й ВЕРТИКАЛЬНЫЙ УРОВЕНЬ"
+   ],
+   "source_boxes": [
+    [
+     491,
+     70,
+     1429,
+     136
+    ]
+   ],
+   "type": "plate",
+   "zones": [
+    [
+     970,
+     32,
+     1026,
+     113
+    ]
+   ],
+   "text": {
+    "text": "60-Й ВЕРТИКАЛЬНЫЙ УРОВЕНЬ",
+    "preset": "sign"
+   },
+   "detect": {
+    "polarity": "dark"
+   },
+   "clean": {
+    "mode": "TODO inpaint|ref (+ref frame)"
+   },
+   "motion": {
+    "mode": "affine"
+   }
+  },
+  {
+   "id": "mnogo-ranenyh",
+   "name": "МНОГО РАНЕНЫХ",
+   "frames": [
+    97863,
+    97902
+   ],
+   "source_frames": [
+    97862,
+    97902
+   ],
+   "source_lines": [
+    "Dialogue: 0,1:08:01.63,1:08:03.33,style.center,НАДПИСЬ,0,0,0,,{\\an8}МНОГО РАНЕНЫХ"
+   ],
+   "source_boxes": [
+    [
+     694,
+     79,
+     1230,
+     136
+    ]
+   ],
+   "type": "plate",
+   "zones": [
+    [
+     711,
+     423,
+     911,
+     518
+    ]
+   ],
+   "text": {
+    "text": "МНОГО РАНЕНЫХ",
+    "preset": "sign"
+   },
+   "detect": {
+    "polarity": "dark"
+   },
+   "clean": {
+    "mode": "inpaint"
+   },
+   "motion": "static"
+  },
+  {
+   "id": "nayden-demon",
+   "name": "НАЙДЕН ДЕМОН",
+   "frames": [
+    97906,
+    97981
+   ],
+   "source_frames": [
+    97906,
+    97980
+   ],
+   "source_lines": [
+    "Dialogue: 0,1:08:03.49,1:08:06.61,style.center,НАДПИСЬ,0,0,0,,{\\an8}НАЙДЕН ДЕМОН"
+   ],
+   "source_boxes": [
+    [
+     718,
+     70,
+     1202,
+     145
+    ]
+   ],
+   "type": "plate",
+   "zones": [
+    [
+     1358,
+     249,
+     1524,
+     398
+    ]
+   ],
+   "text": {
+    "text": "НАЙДЕН ДЕМОН",
+    "preset": "sign"
+   },
+   "detect": {
+    "polarity": "dark"
+   },
+   "clean": {
+    "mode": "TODO inpaint|ref (+ref frame)"
+   },
+   "motion": {
+    "mode": "affine"
+   }
+  },
+  {
+   "id": "tretya-molodaya-luna-2",
+   "name": "ТРЕТЬЯ МОЛОДАЯ ЛУНА",
+   "frames": [
+    126373,
+    126453
+   ],
+   "source_frames": [
+    126372,
+    126451
+   ],
+   "source_lines": [
+    "Dialogue: 0,1:27:50.74,1:27:54.10,style.center,НАДПИСЬ,0,0,0,,{\\an8}ТРЕТЬЯ МОЛОДАЯ ЛУНА"
+   ],
+   "source_boxes": [
+    [
+     592,
+     79,
+     1329,
+     145
+    ]
+   ],
+   "type": "plate",
+   "zones": [
+    [
+     695,
+     449,
+     881,
+     527
+    ]
+   ],
+   "text": {
+    "text": "ТРЕТЬЯ МОЛОДАЯ ЛУНА",
+    "preset": "sign"
+   },
+   "detect": {
+    "polarity": "dark"
+   },
+   "clean": {
+    "mode": "TODO inpaint|ref (+ref frame)"
+   },
+   "motion": "TODO"
+  },
+  {
+   "id": "1-2-3-5-7-9-10",
+   "name": "1 — 2 — 3 — 5 — 7 — 9 — 10",
+   "frames": [
+    130796,
+    130835
+   ],
+   "source_frames": [
+    130796,
+    130834
+   ],
+   "source_lines": [
+    "Dialogue: 0,1:30:55.27,1:30:56.89,style.center,НАДПИСЬ,0,0,0,,{\\an8}1 — 2 — 3 — 5 — 7 — 9 — 10"
+   ],
+   "source_boxes": [
+    [
+     553,
+     80,
+     1371,
+     136
+    ]
+   ],
+   "type": "plate",
+   "zones": [
+    [
+     1352,
+     398,
+     1427,
+     517
+    ]
+   ],
+   "text": {
+    "text": "1 — 2 — 3 — 5 — 7 — 9 — 10",
+    "preset": "sign"
+   },
+   "detect": {
+    "polarity": "light"
+   },
+   "clean": {
+    "mode": "TODO inpaint|ref (+ref frame)"
+   },
+   "motion": {
+    "mode": "affine"
+   }
+  },
+  {
+   "id": "tretya-molodaya-luna-3",
+   "name": "ТРЕТЬЯ МОЛОДАЯ ЛУНА",
+   "frames": [
+    143001,
+    143028
+   ],
+   "source_frames": [
+    143001,
+    143027
+   ],
+   "source_lines": [
+    "Dialogue: 0,1:39:24.33,1:39:25.45,style.center,НАДПИСЬ,0,0,0,,{\\an8}ТРЕТЬЯ МОЛОДАЯ ЛУНА"
+   ],
+   "source_boxes": [
+    [
+     592,
+     79,
+     1329,
+     145
+    ]
+   ],
+   "type": "plate",
+   "zones": [
+    [
+     1094,
+     285,
+     1167,
+     370
+    ]
+   ],
+   "text": {
+    "text": "ТРЕТЬЯ МОЛОДАЯ ЛУНА",
+    "preset": "sign"
+   },
+   "detect": {
+    "polarity": "dark"
+   },
+   "clean": {
+    "mode": "TODO inpaint|ref (+ref frame)"
+   },
+   "motion": {
+    "mode": "affine"
+   }
+  },
+  {
+   "id": "tretya-molodaya-luna-4",
+   "name": "ТРЕТЬЯ МОЛОДАЯ ЛУНА",
+   "frames": [
+    144694,
+    144714
+   ],
+   "source_frames": [
+    144694,
+    144714
+   ],
+   "source_lines": [
+    "Dialogue: 0,1:40:34.93,1:40:35.78,style.center,НАДПИСЬ,0,0,0,,{\\an8}ТРЕТЬЯ МОЛОДАЯ ЛУНА"
+   ],
+   "source_boxes": [
+    [
+     592,
+     79,
+     1329,
+     145
+    ]
+   ],
+   "type": "TODO plate|text",
+   "zones": "TODO",
+   "text": {
+    "text": "ТРЕТЬЯ МОЛОДАЯ ЛУНА",
+    "preset": "sign"
+   },
+   "detect": {
+    "polarity": "TODO light|dark"
+   },
+   "clean": {
+    "mode": "TODO inpaint|ref (+ref frame)"
+   },
+   "motion": "TODO"
+  },
+  {
+   "id": "1-2-3-4-5-6",
+   "name": "1 — 2 — 3 — 4 — 5 — 6",
+   "frames": [
+    150960,
+    150999
+   ],
+   "source_frames": [
+    150960,
+    150999
+   ],
+   "source_lines": [
+    "Dialogue: 0,1:44:56.28,1:44:57.95,style.center,НАДПИСЬ,0,0,0,,{\\an8}1 — 2 — 3 — 4 — 5 — 6"
+   ],
+   "source_boxes": [
+    [
+     632,
+     80,
+     1292,
+     136
+    ]
+   ],
+   "type": "TODO plate|text",
+   "zones": "TODO",
+   "text": {
+    "text": "1 — 2 — 3 — 4 — 5 — 6",
+    "preset": "sign"
+   },
+   "detect": {
+    "polarity": "TODO light|dark"
+   },
+   "clean": {
+    "mode": "TODO inpaint|ref (+ref frame)"
+   },
+   "motion": "TODO"
+  },
+  {
+   "id": "7-8-9-10-11",
+   "name": "7 — 8 — 9 — 10 — 11",
+   "frames": [
+    151002,
+    151026
+   ],
+   "source_frames": [
+    151002,
+    151026
+   ],
+   "source_lines": [
+    "Dialogue: 0,1:44:58.03,1:44:59.07,style.center,НАДПИСЬ,0,0,0,,{\\an8}7 — 8 — 9 — 10 — 11"
+   ],
+   "source_boxes": [
+    [
+     658,
+     80,
+     1254,
+     136
+    ]
+   ],
+   "type": "plate",
+   "zones": [
+    [
+     907,
+     348,
+     997,
+     439
+    ]
+   ],
+   "text": {
+    "text": "7 — 8 — 9 — 10 — 11",
+    "preset": "sign"
+   },
+   "detect": {
+    "polarity": "light"
+   },
+   "clean": {
+    "mode": "TODO inpaint|ref (+ref frame)"
+   },
+   "motion": {
+    "mode": "affine"
+   }
+  },
+  {
+   "id": "istreblenie-3",
+   "name": "ИСТРЕБЛЕНИЕ",
+   "frames": [
+    155241,
+    155297
+   ],
+   "source_frames": [
+    155240,
+    155296
+   ],
+   "source_lines": [
+    "Dialogue: 0,1:47:54.80,1:47:57.15,style.center,НАДПИСЬ,0,0,0,,{\\an8}ИСТРЕБЛЕНИЕ"
+   ],
+   "source_boxes": [
+    [
+     738,
+     79,
+     1184,
+     136
+    ]
+   ],
+   "type": "plate",
+   "zones": [
+    [
+     863,
+     407,
+     931,
+     474
+    ]
+   ],
+   "text": {
+    "text": "ИСТРЕБЛЕНИЕ",
+    "preset": "sign"
+   },
+   "detect": {
+    "polarity": "dark"
+   },
+   "clean": {
+    "mode": "TODO inpaint|ref (+ref frame)"
+   },
+   "motion": "TODO"
+  },
+  {
+   "id": "istreblenie-demonov-3",
+   "name": "ИСТРЕБЛЕНИЕ ДЕМОНОВ",
+   "frames": [
+    156245,
+    156295
+   ],
+   "source_frames": [
+    156245,
+    156294
+   ],
+   "source_lines": [
+    "Dialogue: 0,1:48:36.69,1:48:38.79,style.center,НАДПИСЬ,0,0,0,,{\\an8}ИСТРЕБЛЕНИЕ ДЕМОНОВ"
+   ],
+   "source_boxes": [
+    [
+     578,
+     79,
+     1343,
+     145
+    ]
+   ],
+   "type": "TODO plate|text",
+   "zones": "TODO",
+   "text": {
+    "text": "ИСТРЕБЛЕНИЕ ДЕМОНОВ",
+    "preset": "sign"
+   },
+   "detect": {
+    "polarity": "TODO light|dark"
+   },
+   "clean": {
+    "mode": "TODO inpaint|ref (+ref frame)"
+   },
+   "motion": "TODO"
+  },
+  {
+   "id": "1-3-5-6-7-8-9-10-11",
+   "name": "1 — 3 — 5 — 6 — 7 — 8 — 9 —10 — 11",
+   "frames": [
+    157260,
+    157300
+   ],
+   "source_frames": [
+    157262,
+    157299
+   ],
+   "source_lines": [
+    "Dialogue: 0,1:49:19.10,1:49:20.69,style.center,НАДПИСЬ,0,0,0,,{\\an8}1 — 3 — 5 — 6 — 7 — 8 — 9 —10 — 11"
+   ],
+   "source_boxes": [
+    [
+     420,
+     80,
+     1496,
+     136
+    ]
+   ],
+   "type": "plate",
+   "zones": [
+    [
+     1059,
+     42,
+     1117,
+     108
+    ]
+   ],
+   "text": {
+    "text": "1 — 3 — 5 — 6 — 7 — 8 — 9 —10 — 11",
+    "preset": "sign"
+   },
+   "detect": {
+    "polarity": "dark"
+   },
+   "clean": {
+    "mode": "TODO inpaint|ref (+ref frame)"
+   },
+   "motion": "TODO"
+  },
+  {
+   "id": "mirovoy-sudya-minamite",
+   "name": "МИРОВОЙ СУДЬЯ МИНАМИТЁ",
+   "frames": [
+    165770,
+    165950
+   ],
+   "source_frames": [
+    165770,
+    165949
+   ],
+   "source_lines": [
+    "Dialogue: 0,1:55:13.99,1:55:21.49,style.center,НАДПИСЬ,0,0,0,,{\\an8}МИРОВОЙ СУДЬЯ МИНАМИТЁ"
+   ],
+   "source_boxes": [
+    [
+     518,
+     70,
+     1403,
+     145
+    ]
+   ],
+   "type": "plate",
+   "zones": [
+    [
+     233,
+     44,
+     1557,
+     157
+    ]
+   ],
+   "text": {
+    "text": "МИРОВОЙ СУДЬЯ МИНАМИТЁ",
+    "preset": "sign"
+   },
+   "detect": {
+    "polarity": "light"
+   },
+   "clean": {
+    "mode": "TODO inpaint|ref (+ref frame)"
+   },
+   "motion": {
+    "mode": "affine"
+   }
+  },
+  {
+   "id": "boevoy-stil-soryu",
+   "name": "БОЕВОЙ СТИЛЬ СОРЮ",
+   "frames": [
+    169373,
+    169621
+   ],
+   "source_frames": [
+    169372,
+    169621
+   ],
+   "source_lines": [
+    "Dialogue: 0,1:57:44.20,1:57:54.63,style.center,НАДПИСЬ,0,0,0,,{\\an8}БОЕВОЙ СТИЛЬ СОРЮ"
+   ],
+   "source_boxes": [
+    [
+     623,
+     70,
+     1299,
+     136
+    ]
+   ],
+   "type": "plate",
+   "zones": [
+    [
+     399,
+     0,
+     541,
+     73
+    ]
+   ],
+   "text": {
+    "text": "БОЕВОЙ СТИЛЬ СОРЮ",
+    "preset": "sign"
+   },
+   "detect": {
+    "polarity": "light"
+   },
+   "clean": {
+    "mode": "TODO inpaint|ref (+ref frame)"
+   },
+   "motion": {
+    "mode": "affine"
+   }
+  },
+  {
+   "id": "dodze-soryu",
+   "name": "ДОДЗЁ СОРЮ",
+   "frames": [
+    171291,
+    171395
+   ],
+   "source_frames": [
+    171290,
+    171394
+   ],
+   "source_lines": [
+    "Dialogue: 0,1:59:04.21,1:59:08.58,style.center,НАДПИСЬ,0,0,0,,{\\an8}ДОДЗЁ СОРЮ"
+   ],
+   "source_boxes": [
+    [
+     751,
+     71,
+     1166,
+     145
+    ]
+   ],
+   "type": "plate",
+   "zones": [
+    [
+     1035,
+     300,
+     1139,
+     372
+    ]
+   ],
+   "text": {
+    "text": "ДОДЗЁ СОРЮ",
+    "preset": "sign"
+   },
+   "detect": {
+    "polarity": "dark"
+   },
+   "clean": {
+    "mode": "TODO inpaint|ref (+ref frame)"
+   },
+   "motion": {
+    "mode": "affine"
+   }
+  },
+  {
+   "id": "boevoy-stil-soryu-2",
+   "name": "БОЕВОЙ СТИЛЬ СОРЮ",
+   "frames": [
+    180722,
+    180781
+   ],
+   "source_frames": [
+    180721,
+    180780
+   ],
+   "source_lines": [
+    "Dialogue: 0,2:05:37.55,2:05:40.05,style.center,НАДПИСЬ,0,0,0,,{\\an8}БОЕВОЙ СТИЛЬ СОРЮ"
+   ],
+   "source_boxes": [
+    [
+     623,
+     70,
+     1299,
+     136
+    ]
+   ],
+   "type": "plate",
+   "zones": [
+    [
+     1108,
+     361,
+     1155,
+     518
+    ]
+   ],
+   "text": {
+    "text": "БОЕВОЙ СТИЛЬ СОРЮ",
+    "preset": "sign"
+   },
+   "detect": {
+    "polarity": "dark"
+   },
+   "clean": {
+    "mode": "TODO inpaint|ref (+ref frame)"
+   },
+   "motion": {
+    "mode": "affine"
+   }
+  },
+  {
+   "id": "istreblenie-4",
+   "name": "ИСТРЕБЛЕНИЕ",
+   "frames": [
+    199796,
+    199843
+   ],
+   "source_frames": [
+    199796,
+    199843
+   ],
+   "source_lines": [
+    "Dialogue: 0,2:18:53.12,2:18:55.16,style.center,НАДПИСЬ,0,0,0,,{\\an8}ИСТРЕБЛЕНИЕ"
+   ],
+   "source_boxes": [
+    [
+     738,
+     79,
+     1184,
+     136
+    ]
+   ],
+   "type": "TODO plate|text",
+   "zones": "TODO",
+   "text": {
+    "text": "ИСТРЕБЛЕНИЕ",
+    "preset": "sign"
+   },
+   "detect": {
+    "polarity": "TODO light|dark"
+   },
+   "clean": {
+    "mode": "TODO inpaint|ref (+ref frame)"
+   },
+   "motion": "TODO"
+  },
+  {
+   "id": "tretya",
+   "name": "ТРЕТЬЯ",
+   "frames": [
+    201107,
+    201138
+   ],
+   "source_frames": [
+    201106,
+    201137
+   ],
+   "source_lines": [
+    "Dialogue: 0,2:19:47.79,2:19:49.13,style.center,НАДПИСЬ,0,0,0,,{\\an8}ТРЕТЬЯ"
+   ],
+   "source_boxes": [
+    [
+     839,
+     80,
+     1078,
+     135
+    ]
+   ],
+   "type": "plate",
+   "zones": [
+    [
+     1279,
+     135,
+     1356,
+     193
+    ]
+   ],
+   "text": {
+    "text": "ТРЕТЬЯ",
+    "preset": "sign"
+   },
+   "detect": {
+    "polarity": "dark"
+   },
+   "clean": {
+    "mode": "TODO inpaint|ref (+ref frame)"
+   },
+   "motion": "TODO"
+  },
+  {
+   "id": "pervaya-molodaya-luna",
+   "name": "ПЕРВАЯ МОЛОДАЯ ЛУНА",
+   "frames": [
+    212187,
+    212315
+   ],
+   "source_frames": [
+    212186,
+    212313
+   ],
+   "source_lines": [
+    "Dialogue: 0,2:27:29.91,2:27:35.25,style.center,НАДПИСЬ,0,0,0,,{\\an8}ПЕРВАЯ МОЛОДАЯ ЛУНА"
+   ],
+   "source_boxes": [
+    [
+     590,
+     79,
+     1334,
+     145
+    ]
+   ],
+   "type": "plate",
+   "zones": [
+    [
+     512,
+     283,
+     706,
+     453
+    ]
+   ],
+   "text": {
+    "text": "ПЕРВАЯ МОЛОДАЯ ЛУНА",
+    "preset": "sign"
+   },
+   "detect": {
+    "polarity": "dark"
+   },
+   "clean": {
+    "mode": "TODO inpaint|ref (+ref frame)"
+   },
+   "motion": "TODO"
+  },
+  {
+   "id": "vtoraya-molodaya-luna-2",
+   "name": "ВТОРАЯ МОЛОДАЯ ЛУНА",
+   "frames": [
+    212427,
+    212637
+   ],
+   "source_frames": [
+    212427,
+    212636
+   ],
+   "source_lines": [
+    "Dialogue: 0,2:27:39.94,2:27:48.71,style.center,НАДПИСЬ,0,0,0,,{\\an8}ВТОРАЯ МОЛОДАЯ ЛУНА"
+   ],
+   "source_boxes": [
+    [
+     590,
+     79,
+     1334,
+     145
+    ]
+   ],
+   "type": "plate",
+   "zones": [
+    [
+     1155,
+     94,
+     1317,
+     281
+    ]
+   ],
+   "text": {
+    "text": "ВТОРАЯ МОЛОДАЯ ЛУНА",
+    "preset": "sign"
+   },
+   "detect": {
+    "polarity": "light"
+   },
+   "clean": {
+    "mode": "TODO inpaint|ref (+ref frame)"
+   },
+   "motion": "TODO"
+  },
+  {
+   "id": "chetvertaya",
+   "name": "ЧЕТВЁРТАЯ",
+   "frames": [
+    217183,
+    217217
+   ],
+   "source_frames": [
+    217183,
+    217216
+   ],
+   "source_lines": [
+    "Dialogue: 0,2:30:58.32,2:30:59.73,style.center,НАДПИСЬ,0,0,0,,{\\an8}ЧЕТВЁРТАЯ"
+   ],
+   "source_boxes": [
+    [
+     780,
+     71,
+     1138,
+     135
+    ]
+   ],
+   "type": "plate",
+   "zones": [
+    [
+     1165,
+     213,
+     1269,
+     319
+    ]
+   ],
+   "text": {
+    "text": "ЧЕТВЁРТАЯ",
+    "preset": "sign"
+   },
+   "detect": {
+    "polarity": "dark"
+   },
+   "clean": {
+    "mode": "TODO inpaint|ref (+ref frame)"
+   },
+   "motion": "TODO"
+  }
+ ]
+}

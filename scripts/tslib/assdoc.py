@@ -163,7 +163,7 @@ def merge(signs_path, subs_path, ycbcr, source_signs=None, drop_styles=()):
         return p[8] == TS or p[3] in drop_styles or (l.startswith("Dialogue:") and event_key(l) in src_keys)
 
     removed = [l for l in events if is_old_sign(l)]
-    dlg_before = sum(1 for l in events if l.startswith("Dialogue:") and not is_old_sign(l))
+    dlg_before = [_no_layer(l) for l in events if l.startswith("Dialogue:") and not is_old_sign(l)]
     events = [l for l in events if not is_old_sign(l)]
     still_used = {ev_style(l) for l in events if l.startswith(("Dialogue:", "Comment:"))}
     gone = {ev_style(l) for l in removed} - still_used       # styles only the old signs used
@@ -199,10 +199,18 @@ def merge(signs_path, subs_path, ycbcr, source_signs=None, drop_styles=()):
         events[pos:pos] = b
     out = info + ["", "[V4+ Styles]", fmt] + keep + new + ["", "[Events]", ev_fmt] + events + src[ev1:]
     write_lines(subs_path, out)
-    dlg_after = sum(1 for l in read_lines(subs_path) if l.startswith("Dialogue:") and ev_fields(l)[1][8] != TS)
-    return dict(dialogue_before=dlg_before, dialogue_after=dlg_after, removed=len(removed), inserted=sum(len(b) for b in blocks), blocks=len(blocks),
+    dlg_after = [_no_layer(l) for l in read_lines(subs_path) if l.startswith("Dialogue:") and ev_fields(l)[1][8] != TS]
+    # the dialogue must come out the same line for line (text, times, style, actor, order); only Layer may move up
+    return dict(dialogue_before=len(dlg_before), dialogue_after=len(dlg_after), dialogue_same=dlg_before == dlg_after,
+                dialogue_diff=next((i for i, (x, y) in enumerate(zip(dlg_before, dlg_after)) if x != y), None),
+                removed=len(removed), inserted=sum(len(b) for b in blocks), blocks=len(blocks),
                 backup=backup, dialogue_bump=bump,
                 styles_removed=sorted(gone - {parse_style(l)["Name"] for l in new}))   # not re-added by the signs
+
+
+def _no_layer(line):
+    kind, p = ev_fields(line)
+    return f"{kind}: " + ",".join(p[1:])
 
 
 def _mark(line):

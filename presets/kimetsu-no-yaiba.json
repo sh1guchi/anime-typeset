@@ -1,0 +1,33 @@
+{
+ "match": [
+  "kimetsu",
+  "demon slayer",
+  "клинок, рассекающий демонов",
+  "鬼滅"
+ ],
+ "about": "Kimetsu no Yaiba / Demon Slayer (Infinity Castle movie 1). CR (Erai-raws) gives movie signs as plain top-centre Arial lines. Original signs are kanji drawn on things: 滅/殺/素流 on uniforms and haori, 悪鬼滅殺 engraved on blades, 上弦/壱..陸 in demons' eyes, brush ink on Ubuyashiki maps and wooden boards / scrolls, the movie logo. Masks only where the kanji sit on a static or rigidly moving surface (signboard, hanging scroll, oval on a map); on clothes, blades and eyes the Russian text goes next to the kanji in brush (Edo SZ HQ: all-caps brush, readable; Kashima reads worse) coloured like the kanji: sign_red (sword 滅), sign_blue / sign_white (blade engravings), sign_gold (eyes of Upper Moons), sign_green (Kaigaku), sign_pink (Nakime), sign_ice (Akaza's compass needle), paper (black ink on a cream edge: haori paper squares, a man's back), ink (black ink with a soft paper glow: maps, boards, scrolls), title_red / title_white (under the logo, three lines: series name white em 32, arc red em 64, part white em 44; the logo itself stays). Masks: hanging scroll / signboard / oval on a map use `inside` + `fill: true` (surface fill of the whole paper / board). Songs: Cormorant Garamond Bold italic, pale gold, dark burgundy edge, soft dark glow; moved left of the credit roll at the end. PlayRes 640x360.",
+ "playres_y": 360,
+ "styles": [
+  "Style: Маска,Arial,20,&H00FFFFFF,&H000000FF,&H00000000,&H00000000,0,0,0,0,100,100,0,0,1,0,0,7,0,0,0,1",
+  "Style: Кисть,Edo SZ HQ,24,&H00F0F4F6,&H000000FF,&H00141016,&H00000000,0,0,0,0,100,100,0.5,0,1,1.1,0,2,0,0,0,204",
+  "Style: Кисть-тень,Edo SZ HQ,24,&HFF000000,&H000000FF,&H50080608,&H00000000,0,0,0,0,100,100,0.5,0,1,3.2,0,2,0,0,0,204",
+  "Style: Тушь,Edo SZ HQ,24,&H00201C1A,&H000000FF,&H00201C1A,&H00000000,0,0,0,0,100,100,0.4,0,1,0,0,2,0,0,0,204",
+  "Style: Песня,Cormorant Garamond,24,&H00C8E6F5,&H000000FF,&H00180A2A,&H00000000,-1,-1,0,0,100,100,0.3,0,1,0.8,0,8,20,20,12,204",
+  "Style: Песня-тень,Cormorant Garamond,24,&HFF000000,&H000000FF,&H70000000,&H00000000,-1,-1,0,0,100,100,0.3,0,1,2.6,0,8,20,20,12,204"
+ ],
+ "sign": {"layers": [{"style": "Кисть-тень", "layer": 15, "tags": "\\blur4"}, {"style": "Кисть", "layer": 20, "tags": "\\blur0.6"}]},
+ "sign_white": {"layers": [{"style": "Кисть-тень", "layer": 15, "tags": "\\blur4"}, {"style": "Кисть", "layer": 20, "tags": "\\blur0.6\\c&HEEF0F2&\\3c&H101014&"}]},
+ "sign_red": {"layers": [{"style": "Кисть-тень", "layer": 15, "tags": "\\blur4"}, {"style": "Кисть", "layer": 20, "tags": "\\blur0.6\\c&H2E24D8&\\3c&H08060E&"}]},
+ "sign_gold": {"layers": [{"style": "Кисть-тень", "layer": 15, "tags": "\\blur4"}, {"style": "Кисть", "layer": 20, "tags": "\\blur0.6\\c&H5AC6F4&\\3c&H081018&"}]},
+ "sign_blue": {"layers": [{"style": "Кисть-тень", "layer": 15, "tags": "\\blur4\\3c&H3A1404&"}, {"style": "Кисть", "layer": 20, "tags": "\\blur0.6\\c&HFFE2AE&\\3c&H2A1006&"}]},
+ "sign_green": {"layers": [{"style": "Кисть-тень", "layer": 15, "tags": "\\blur4"}, {"style": "Кисть", "layer": 20, "tags": "\\blur0.6\\c&H9EF58A&\\3c&H061206&"}]},
+ "sign_pink": {"layers": [{"style": "Кисть-тень", "layer": 15, "tags": "\\blur4"}, {"style": "Кисть", "layer": 20, "tags": "\\blur0.6\\c&HE878FF&\\3c&H200820&"}]},
+ "sign_ice": {"layers": [{"style": "Кисть-тень", "layer": 15, "tags": "\\blur6\\3c&HFF8A2E&\\3a&H50&"}, {"style": "Кисть", "layer": 20, "tags": "\\blur0.6\\c&HFFF6EA&\\3c&H5A2408&"}]},
+ "paper": {"layers": [{"style": "Кисть-тень", "layer": 15, "tags": "\\blur4"}, {"style": "Тушь", "layer": 20, "tags": "\\blur0.6\\bord1.2\\3c&HE2EAEE&"}]},
+ "ink": {"layers": [{"style": "Кисть-тень", "layer": 15, "tags": "\\blur3\\3c&HE6EEF2&\\3a&H70&"}, {"style": "Тушь", "layer": 20, "tags": "\\blur0.7"}]},
+ "ink_flat": {"layers": [{"style": "Тушь", "layer": 20, "tags": "\\blur0.8"}]},
+ "title_red": {"layers": [{"style": "Кисть-тень", "layer": 15, "tags": "\\blur5"}, {"style": "Кисть", "layer": 20, "tags": "\\blur0.5\\c&H2A1ECC&\\3c&HFFFFFF&\\bord1.3"}]},
+ "title_white": {"layers": [{"style": "Кисть-тень", "layer": 15, "tags": "\\blur4"}, {"style": "Кисть", "layer": 20, "tags": "\\blur0.5\\c&HF4F4F4&\\3c&H101010&"}]},
+ "song": {"layers": [{"style": "Песня-тень", "layer": 40, "tags": "\\blur3"}, {"style": "Песня", "layer": 41, "tags": "\\blur0.7"}]},
+ "glow": {"sig": [3, 6, 12], "w": [0.0, 0.7, 0.3], "C": [0, 0, 0]}
+}

@@ -299,12 +299,21 @@ def cloud_lines(an, m, clip, C, st, en, style, layer, levels=48, blur=0.5, eps=1
 
 
 def colfit(src, dst, sel):
-    """per-channel linear map src -> dst over pixels sel: returns (3,2) [gain, offset]"""
+    """per-channel linear map src -> dst over pixels sel: returns (3,2) [gain, offset].
+    Robust: pixels the map does not explain (a hand or a sleeve shadow passing, line edges a pixel off after the
+    track) are dropped over three passes - a plain least-squares fit over a busy ring skews the patch colour."""
     out = []
     for c in range(3):
-        x = src[..., c][sel]; y = dst[..., c][sel]
-        A = np.stack([x, np.ones_like(x)], 1)
-        (g, o), *_ = np.linalg.lstsq(A, y, rcond=None)
+        x = src[..., c][sel].astype(np.float64); y = dst[..., c][sel].astype(np.float64)
+        keep = np.ones(len(x), bool)
+        g, o = 1.0, 0.0
+        for _ in range(3):
+            if keep.sum() < 20:
+                break
+            A = np.stack([x[keep], np.ones(keep.sum())], 1)
+            (g, o), *_ = np.linalg.lstsq(A, y[keep], rcond=None)
+            r = np.abs(g * x + o - y)
+            keep = r < max(3.0, 2.5 * float(np.sqrt(np.mean(r[keep] ** 2))))
         out.append((g, o))
     return np.array(out, np.float32)
 

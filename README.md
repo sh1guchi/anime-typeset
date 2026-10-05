@@ -41,6 +41,8 @@ video, and the signs merged into your dialogue subs. Instructions and presets ar
 3. `build` — заплатки и текст для каждой надписи (параллельно) и контрольные кадры через libass.
 4. Проверка по чек-листу, правка параметров отдельных надписей, пересборка только их.
 5. `assemble` → `.ass`, `preview` → mp4, `merge` → вставка в сабы.
+6. Там же, без отдельной просьбы: отчёт о прогоне (`feedback/`), доработка инструмента по нему, регрессия на
+   прошлых сериях из `examples/`, рецепт серии в `examples/`, уборка рабочей папки в Корзину.
 
 ## Требования
 
@@ -92,8 +94,9 @@ git clone https://github.com/sh1guchi/anime-typeset ~/.claude/skills/anime-types
 - `SKILL.md` — инструкция для Claude: порядок работы, выбор типа надписи, чек-лист проверки.
 - `scripts/typeset.py` + `scripts/tslib/` — сам инструмент (команды: `doctor`, `analyze`, `build`, `check`,
   `assemble`, `preview`, `merge`, `compact`, `grid`, `ruler`, `geom`, `probe`, `track`, `fonts`, `set`,
-  `split`, `sheet`; `python scripts/typeset.py -h`).
-- `presets/` — стили и параметры тайтлов: `black-clover`, `grand-blue`, `to-be-hero-x`, `default`.
+  `split`, `add`, `sheet`; `python scripts/typeset.py -h`).
+- `presets/` — стили и параметры тайтлов: `black-clover`, `grand-blue`, `kimetsu-no-yaiba`, `to-be-hero-x`,
+  `default`.
 - `examples/` — рабочие конфиги готовых серий (рецепты), решения по надписям (`*.notes.md`) и черновики
   `analyze` (`*.draft.json`). Пути в них — относительно рабочей папки `<папка видео>/_typeset/<имя видео>/`.
 - `references/` — формат `episode.json`, как устроены маски, цвет и сжатие, симптом → что крутить, заметки

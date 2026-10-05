@@ -37,9 +37,69 @@ def build_text(ctx, it):
     f0, f1 = it["frames"]
     lines = []
     texts = specs(it, "texts", "text")
+    if it.get("track"):
+        # no mask, but the text rides the camera / an object: positions are given in the track's ref frame
+        AFF, segs = text_track(ctx, it, texts)
+        for spec in texts:
+            lines += follow_affine(ctx, spec, segs, AFF)
+        return dict(lines=lines, area=it.get("area"))
     for spec in texts:
         lines += emit_text(ctx, spec, f0, f1)[0]
     return dict(lines=lines, area=it.get("area"))
+
+
+def text_track(ctx, it, texts):
+    """Track for a text without a mask. track: {"roi": [x0,y0,x1,y1] - what the text rides (a board, a blade,
+    the background), "ref": frame of the text positions (default f0), "mode": "shift" | "affine",
+    "scale": 0.5 (tracking resolution), "axis": "x"|"y" (shift only), "exclude": [[x0,y0,x1,y1], ...] (affine),
+    "seg_tol" 0.6 / "seg_rel" 0.1 (piecewise-linear \\move segments)}.
+    shift  - cumulative frame-to-frame phase correlation of the roi: long pans/tilts where the end frame no longer
+             overlaps the ref (a tall signboard scrolling through the frame); translation only.
+    affine - ECC against the ref frame inside the roi: zoom / rotation; the motion must keep the roi in view.
+    The track is cached (cache/ttrack_*.npy): changing only the text rebuilds in seconds."""
+    from .motion import track_roi, smooth_path
+    v = ctx.video
+    f0, f1 = it["frames"]
+    tr = it["track"]
+    ref = int(tr.get("ref", f0))
+    mode = tr.get("mode", "shift")
+    s = float(tr.get("scale", 0.5))
+    x0, y0, x1, y1 = [int(c) for c in tr["roi"]]
+    key = f"ttrack_{mode}_{f0}_{f1}_{ref}_{x0}_{y0}_{x1}_{y1}_{s}_{tr.get('axis', '')}_{len(tr.get('exclude', []))}"
+    cache = ctx.cache_path(key + ".npy")
+    if os.path.exists(cache):
+        A = np.load(cache)
+    else:
+        print(f"    tracking text ({mode}, roi {[x0, y0, x1, y1]})...", flush=True)
+        if mode == "shift":
+            p = track_roi(v, f0, f1, (x0, y0, x1 - x0, y1 - y0), scale=s, axis=tr.get("axis"))
+            if tr.get("smooth", True):
+                p = smooth_path(p)
+            p = p - p[ref - f0]
+            A = np.stack([np.float32([[1, 0, dx], [0, 1, dy]]) for dx, dy in p])
+        elif mode == "affine":
+            W, H = int(round(coords.AW * s)), int(round(coords.AH * s))
+            G = v.grab(f0, f1 - f0 + 1, w=W, h=H, gray=True)
+            m = np.zeros((H, W), np.uint8)
+            m[int(y0 * s):int(y1 * s), int(x0 * s):int(x1 * s)] = 255
+            for e in tr.get("exclude", []):
+                m[int(e[1] * s):int(e[3] * s), int(e[0] * s):int(e[2] * s)] = 0
+            A = np.stack(ecc_affines(G, ref - f0, m, denoise=tr.get("denoise", False)))
+            A[:, :, 2] /= s
+        else:
+            raise SystemExit(f"item {it['id']}: track.mode must be shift or affine")
+        np.save(cache + f".{os.getpid()}.tmp.npy", A.astype(np.float32))
+        os.replace(cache + f".{os.getpid()}.tmp.npy", cache)
+    AFF = {f0 + i: A[i] for i in range(len(A))}
+    tx, ty, sc, _, rot = affine_params(AFF[f1])
+    dx, dy = AFF[f1][:, :2] @ np.float32([(x0 + x1) / 2, (y0 + y1) / 2]) + AFF[f1][:, 2] - np.float32([(x0 + x1) / 2, (y0 + y1) / 2])
+    print(f"    text track: roi centre moves {dx:+.1f},{dy:+.1f} px by the last frame, scale {sc:.3f}, rotation {rot:+.2f} deg",
+          flush=True)
+    pts = [(x0, y0), (x1, y0), (x0, y1), (x1, y1), ((x0 + x1) / 2, (y0 + y1) / 2)]
+    cuts = [c for sp in texts for c in fade_cuts(v, sp, f0, f1)]
+    segs = affine_segments(AFF, f0, f1, pts, tol=tr.get("seg_tol", 0.6), rel=tr.get("seg_rel", 0.1), cuts=cuts)
+    print(f"    {len(segs)} segment(s)", flush=True)
+    return AFF, segs
 
 
 # ---------------------------------------------------------------- plate
@@ -109,6 +169,42 @@ def build_plate(ctx, it):
                 m |= gm
         else:
             m |= plate_mask(med_t, z, zd)
+    surf = []          # inside shapes replaced whole by a smooth surface fitted to their own background
+    if it.get("inside"):
+        # tilted text inside a drawn frame (an oval on a map): boxes would cut into the frame, so the glyph mask
+        # is kept inside these shapes - {"ellipse": [cx, cy, a, b, angle_deg]} | {"poly": [[x, y], ...]};
+        # "fill": true - the whole shape is replaced by a quadratic surface fitted to its non-glyph pixels (paper
+        # inside a ring: the fill never touches the ring or the glyph edges, so no grey seep from them)
+        ins = it["inside"] if isinstance(it["inside"], list) else [it["inside"]]
+        im = np.zeros(coords.shape(), bool)
+        for s in ins:
+            sm = np.zeros(coords.shape(), np.uint8)
+            if "ellipse" in s:
+                cx, cy, a, b, ang = s["ellipse"]
+                cv2.ellipse(sm, (int(round(cx)), int(round(cy))), (int(round(a)), int(round(b))), float(ang), 0, 360, 1, -1)
+            else:
+                cv2.fillPoly(sm, [np.int32(s["poly"])], 1)
+            if not s.get("fill"):
+                im |= sm.astype(bool)
+            else:
+                # a filled shape replaces the glyph mask inside it (that mask holds the frame's own strokes)
+                sm = sm.astype(bool)
+                # the drawn ring may dip into the shape (hand-drawn ovals are not ellipses): dark strokes lying
+                # mostly outside the shape are the frame - their pixels near the shape's edge are not filled
+                raw = glyph_mask(med_t, zones, {**det, **{k: v for k, v in s.items() if k in ("thr", "maxc", "minc", "win")}})
+                n, lab = cv2.connectedComponents(raw.astype(np.uint8))
+                inside_px = np.bincount(lab[sm & raw], minlength=n)
+                all_px = np.bincount(lab[raw], minlength=n)
+                frame_ids = np.where((all_px > 0) & ((all_px - inside_px) > 0.5 * all_px))[0]
+                ring = np.isin(lab, frame_ids) & raw
+                band = sm & ~cv2.erode(sm.astype(np.uint8), np.ones((2 * int(s.get("band", 12)) + 1,) * 2, np.uint8)).astype(bool)
+                # keep the fill a few px off the frame: the moving patch is drawn grown by 3 px and in blocks,
+                # touching the frame would redraw its inner edge as steps
+                sm = sm & ~(dilate(ring, int(s.get("ring_gap", 5))) & band)
+                surf.append((sm, dilate(m & sm, int(s.get("glyph_pad", 4)))))
+        m &= im
+        for sm, _ in surf:
+            m |= sm
     plates = platefill.dedupe(plates)
     enc = it.get("encode", {})
     st, en = v.atime(f0), v.atime(f1 + 1)
@@ -128,9 +224,14 @@ def build_plate(ctx, it):
             if zd.get("fill"):
                 keep[y0:y1, x0:x1] = False
         P = base
-        if m.any():
+        rest = m.copy()
+        for sm, _ in surf:
+            rest &= ~sm
+        if rest.any():
             for x0, y0, x1, y1 in zones:
-                P = harmonic_fill(P, m | keep, (x0 - 120, y0 - 80, x1 + 120, y1 + 70), iters=2000)
+                P = harmonic_fill(P, rest | keep, (x0 - 120, y0 - 80, x1 + 120, y1 + 70), iters=2000)
+        for sm, gl in surf:
+            P = surface_fill(P.copy() if P is base else P, base, sm, gl)
         for p in plates:
             P = platefill.paint(P.copy() if P is base else P, p)
         return P
@@ -211,6 +312,32 @@ def build_plate(ctx, it):
         for spec in texts:
             lines += emit_text(ctx, spec, f0, f1)[0]
     return dict(lines=lines, area=[bb[0] - 80, bb[1] - 80, bb[2] + 80, bb[3] + 80])
+
+
+def surface_fill(P, base, shape, glyphs):
+    """P with `shape` replaced by a quadratic colour surface (per channel) fitted by least squares to the shape's
+    pixels outside `glyphs`, with two passes dropping outliers (stray ink, grain specks)"""
+    ys, xs = np.where(shape & ~glyphs)
+    if len(xs) < 50:
+        print("    inside fill: too few background pixels, shape left to the glyph mask", flush=True)
+        return P
+    cx, cy, s = xs.mean(), ys.mean(), max(xs.std(), ys.std(), 1.0)
+
+    def basis(x, y):
+        u, v = (x - cx) / s, (y - cy) / s
+        return np.stack([np.ones_like(u), u, v, u * u, u * v, v * v], 1)
+    A = basis(xs.astype(np.float64), ys.astype(np.float64))
+    vals = base[ys, xs].astype(np.float64)
+    keep = np.ones(len(xs), bool)
+    for _ in range(3):
+        coef, *_ = np.linalg.lstsq(A[keep], vals[keep], rcond=None)
+        r = np.abs(A @ coef - vals).max(axis=1)
+        sd = float(np.sqrt(np.mean(r[keep] ** 2))) + 1e-6
+        keep = r < 2.5 * sd
+    fy, fx = np.where(shape)
+    P[fy, fx] = np.clip(basis(fx.astype(np.float64), fy.astype(np.float64)) @ coef, 0, 255).astype(P.dtype)
+    print(f"    inside fill: surface over {shape.sum()} px, residual {sd:.1f} levels on {keep.sum()} background px", flush=True)
+    return P
 
 
 def plate_segments(ctx, it, AFF, m, f0, f1, moving):
