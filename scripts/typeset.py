@@ -12,8 +12,11 @@
   ruler    --video V --frames a:b --box x0,y0,x1,y1 --out f.png [--std]      median crop with px rulers
   geom     -c episode.json --frames a:b --box x0,y0,x1,y1 [--no-title]       card geometry for a box
   fonts    [--cyr] [--grep text]                                            installed fonts
-  fonts    -c episode.json --match id [--box ..] [--category ..] [--text ..]   rank installed + Google fonts by the original
+  fonts    [-c episode.json] --specimen --text T [--grep ..]                 every installed family set in T: pick by eye
+  fonts    -c episode.json --match id --with "A,B:700" [--box ..] [--text ..]  check the picks at the sign (+ current face)
+  fonts    -c episode.json --match id --top 8 [--category ..]               + ranking by the original's strokes
   fonts    --get "Family[:weight]"                                           download a Google font into the library
+  fonts    --import file.zip|font.ttf|folder ...                            copy downloaded fonts into the library
   fonts    -c episode.json --try "A,B,C" --frame N --text T --pos x,base --em 60 [--colour --outline --bord --tags --crop] --out f.jpg
                                                                            candidate faces rendered over a frame
   place    -c episode.json id --box x0,y0,x1,y1 [--quad ..] [--text ..]     the original's plane + Russian set into it
@@ -378,9 +381,13 @@ def cmd_fonts_match(a):
     print(f"original: {pol} text, em {em0:.0f} px, stems {target['v'] * em0:.1f} px (the Russian stems are "
           f"matched to it in px), stress contrast "
           f"(vertical / horizontal) {target['hv']:.2f}, roughness {target['rough']:.3f}; Russian at em {em:.0f}")
-    cands, rej = fontmatch.candidates(target, em_n, em, text, cats=cats, online=not a.offline, italic=a.italic,
-                                      min_px=a.min_px, orig_em=em0)
-    print("  rejected: " + ", ".join(f"{k} {n}" for k, n in rej.items() if n))
+    # with picks by eye the sheet checks them, no ranked faces (on BC 2-01 none of those fitted): --top N adds them
+    n_top = a.top if a.top is not None else (0 if a.with_ else 8)
+    cands = []
+    if n_top:                       # the ranking measures the whole catalog (the first run ~10 min, then cached)
+        cands, rej = fontmatch.candidates(target, em_n, em, text, cats=cats, online=not a.offline,
+                                          italic=a.italic, min_px=a.min_px, orig_em=em0)
+        print("  rejected: " + ", ".join(f"{k} {n}" for k, n in rej.items() if n))
     # the faces the item uses now (preset styles) and the ones named with --with (by eye, by genre - references/
     # fonts.md) go first on the sheet, whatever they score: the strokes don't measure character (BC title: Moyenage)
     cur = [(fam, b, "current") for fam, b in (_item_fonts(ctx, it) if it else [])]
@@ -391,21 +398,25 @@ def cmd_fonts_match(a):
         if c is None:
             print(f"  {src} {fam}: neither installed nor in the Google catalog")
             continue
-        print(f"  {src} {fam}: score {c['score']:.2f} - would rank #{1 + sum(x['score'] < c['score'] for x in cands)}"
-              f" of {len(cands)}" + (f" ! {', '.join(c['warn'])}" if c["warn"] else ""))
+        print(f"  {src} {fam}: stems {c['feat']['v'] * em:.1f}px (original {target['v'] * em0:.1f}px), score "
+              f"{c['score']:.2f}" + (f" - would rank #{1 + sum(x['score'] < c['score'] for x in cands)} of "
+                                     f"{len(cands)}" if cands else "")
+              + (f" ! {', '.join(c['warn'])}" if c["warn"] else ""))
         pinned.append(c)
     roots = {p["family"].lower().split()[0] for p in pinned}
-    top = pinned + [c for c in cands if c["family"].lower().split()[0] not in roots][:a.top]
+    top = pinned + [c for c in cands if c["family"].lower().split()[0] not in roots][:n_top]
     for c in top:
         fontmatch.resolve(c, a.italic)
     for i, c in enumerate(top, 1):
         f = c["feat"]
         print(f"  {i}. {c['name']}{' (bold)' if c['bold'] else ''}  [{c['source']}{', ' + c['cat'] if c.get('cat') else ''}]"
-              f"  score {c['score']:.2f}  stems {f['v'] * em:.1f}px contrast {f['hv']:.2f} rough {f['rough']:.3f}")
+              f"  score {c['score']:.2f}  stems {f['v'] * em:.1f}px contrast {f['hv']:.2f} rough {f['rough']:.3f}"
+              + (f"  ! {', '.join(c['warn'])}" if c.get("warn") else ""))
     ranked = [c for c in top if c not in pinned]
     if pinned or (len(ranked) > 1 and ranked[1]["score"] - ranked[0]["score"] < 0.15):
-        print("  " + ("the current face is on the sheet first - compare it with the ranked ones by eye" if pinned
-                      else "the best ones are close") + " - show the sheet to the user and ask (SKILL.md, font choice)")
+        print("  " + ("the current face and the picks are on the sheet: choose by eye (stems much thinner than the "
+                      "original - a heavier weight or \\bord); several fit" if pinned else "the best ones are close")
+              + " - show the sheet to the user and ask (SKILL.md, font choice)")
     colour = a.colour or "&H00{:02X}{:02X}{:02X}&".format(*[int(round(x)) for x in col[::-1]])
     x0, y0, x1, y1 = box
     if len(xs):                                       # baseline: kanji sit ~0.12 em below it
@@ -424,7 +435,8 @@ def cmd_fonts_match(a):
         under = [l for l in ctx.load_lines(it["id"])["lines"] if ev_style(l) == "Маска"]
         under_st = (ctx.playres, [l for l in ctx.all_style_lines if parse_style(l)["Name"] == "Маска"])
     fontmatch.sheet(v, frame, crop, top, text, pos, em, colour, a.outline, a.bord, out,
-                    ctx.path("check", "_fonts"), orig_label=f"original ({pol}, em {em0:.0f})",
+                    ctx.path("check", "_fonts_" + os.path.splitext(os.path.basename(out))[0]),   # own per sheet
+                    orig_label=f"original ({pol}, em {em0:.0f})",
                     under=under, under_styles=under_st)
     if a.json:
         with open(a.json, "w", encoding="utf-8") as fh:
@@ -506,6 +518,28 @@ def cmd_fonts(a):
     from tslib import fonts
     if a.match or a.box:
         return cmd_fonts_match(a)
+    if a.specimen:
+        from tslib import fontmatch
+        if not a.text:
+            raise SystemExit("--specimen needs --text (the sign's Russian text)")
+        out = a.out or (os.path.join(os.path.dirname(os.path.abspath(a.config)), "check", "fonts_specimen.jpg")
+                        if a.config else "fonts_specimen.jpg")
+        os.makedirs(os.path.dirname(os.path.abspath(out)), exist_ok=True)
+        pages, skipped = fontmatch.specimen(a.text, out, a.grep, dark=not a.light)
+        print(f"{len(skipped)} families left out (no letters / full-width / unreadable)")
+        print("\n".join(pages))
+        return
+    if a.import_:
+        from tslib import fontlib
+        got = fontlib.import_fonts(a.import_)
+        for f, recs in got:
+            for r in recs:
+                n, b = fontlib.libass_name(r["path"], r["index"], r["family"], bool(r["bold"]), bool(r["italic"])) or \
+                    (r["family"] + "  ! libass picks another font", r["bold"])
+                print(f"{os.path.basename(f)}: '{n}'{' Bold' if b else ''}  ({'cyr' if r['cyr'] else 'NO Cyrillic'})"
+                      f"  -> --with \"{r['tfamily'] or r['family']}\"")
+        print(f"{len(got)} font files in {fontlib.library_dir()}")
+        return
     if a.get:
         from tslib import fontlib
         fam, _, w = a.get.partition(":")
@@ -758,13 +792,18 @@ def main():
     p.add_argument("--match", help="item id: rank fonts by the strokes of its original text")
     p.add_argument("--box", help="x0,y0,x1,y1 around one line of the original text (default: the item's first zone)")
     p.add_argument("--polarity", choices=("light", "dark")); p.add_argument("--category", help="serif,sans-serif,display,handwriting")
-    p.add_argument("--top", type=int, default=8); p.add_argument("--offline", action="store_true", help="installed fonts only")
+    p.add_argument("--top", type=int, help="ranked faces on the sheet (default 8; none next to --with picks)"); p.add_argument("--offline", action="store_true", help="installed fonts only")
     p.add_argument("--italic", action="store_true"); p.add_argument("--min-px", type=float, default=1.8,
                                                                     help="thinnest acceptable stroke at the real size (1080p px)")
     p.add_argument("--with", dest="with_", help="'Family[:weight],...' picked by eye (installed or Google): shown first "
                    "on the sheet after the item's current face, scored and flagged but never filtered out")
+    p.add_argument("--specimen", action="store_true", help="every installed Cyrillic family set in --text, pages of "
+                   "48 tiles (--grep narrows): look through them and pick by eye")
+    p.add_argument("--light", action="store_true", help="--specimen: dark text on light tiles")
     p.add_argument("--json", help="write the ranked candidates here")
     p.add_argument("--get", help="'Family[:weight]' - download a Google font into the library")
+    p.add_argument("--import", dest="import_", nargs="+", help="font files / .zip / folders (a download from "
+                   "fonts-online.ru) copied into the font library; prints the names for --with and the style")
     p.set_defaults(fn=cmd_fonts)
     p = sp.add_parser("place"); p.add_argument("-c", "--config", required=True); p.add_argument("item")
     p.add_argument("--box", help="x0,y0,x1,y1 around one line of the original text: its quad is measured")

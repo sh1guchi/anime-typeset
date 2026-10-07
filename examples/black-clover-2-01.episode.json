@@ -36,7 +36,7 @@
    "text": {
     "text": "Царство Пик",
     "preset": "sign",
-    "em": 66,
+    "em": 56,
     "x": 958,
     "base": 983,
     "fade_frames": [
@@ -144,7 +144,7 @@
    "text": {
     "text": "Царство Клевера",
     "preset": "sign",
-    "em": 66,
+    "em": 56,
     "x": 958,
     "base": 983
    },

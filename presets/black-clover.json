@@ -4,16 +4,16 @@
  "playres_y": 360,
  "styles": [
   "Style: Маска,Arial,20,&H00FFFFFF,&H000000FF,&H00000000,&H00000000,0,0,0,0,100,100,0,0,1,0,0,7,0,0,0,1",
-  "Style: Карточка,Cormorant Garamond,22,&H00FCFCFF,&H000000FF,&H5A2A1E33,&H00000000,-1,0,0,0,100,100,0.3,0,1,1.1,0,2,0,0,0,204",
-  "Style: Карточка-ореол,Cormorant Garamond,22,&HFF000000,&H000000FF,&H802A1E2E,&H00000000,-1,0,0,0,100,100,0.3,0,1,3.4,0,2,0,0,0,204",
+  "Style: Карточка,BeaumarchaisC,22,&H00FCFCFF,&H000000FF,&H5A2A1E33,&H00000000,0,0,0,0,100,100,0.3,0,1,1.1,0,2,0,0,0,204",
+  "Style: Карточка-ореол,BeaumarchaisC,22,&HFF000000,&H000000FF,&H802A1E2E,&H00000000,0,0,0,0,100,100,0.3,0,1,3.4,0,2,0,0,0,204",
   "Style: Линия,Arial,20,&H00FCFCFF,&H000000FF,&H5A2A1E33,&H00000000,0,0,0,0,100,100,0,0,1,0.9,0,7,0,0,0,1",
-  "Style: Надпись,Cormorant Garamond,40,&H00FFFFFF,&H000000FF,&H30140E10,&H00000000,-1,0,0,0,100,100,0.6,0,1,1.3,0,2,0,0,0,204",
-  "Style: Надпись-тень,Cormorant Garamond,40,&HFF000000,&H000000FF,&H50100A0C,&H00000000,-1,0,0,0,100,100,0.6,0,1,5,0,2,0,0,0,204",
+  "Style: Надпись,Calligrapher,40,&H00FFFFFF,&H000000FF,&H30140E10,&H00000000,0,0,0,0,100,100,0.6,0,1,1.3,0,2,0,0,0,204",
+  "Style: Надпись-тень,Calligrapher,40,&HFF000000,&H000000FF,&H50100A0C,&H00000000,0,0,0,0,100,100,0.6,0,1,5,0,2,0,0,0,204",
   "Style: Логотип,Palatino Linotype,16,&H001E1C22,&H000000FF,&H40F0E6FF,&H00000000,-1,0,0,0,100,100,0,0,1,1.6,0,2,0,0,0,204",
-  "Style: Название,Moyenage,48,&H00FAFAFA,&H000000FF,&H40000000,&H00000000,0,0,0,0,100,100,1,0,1,0.6,0,5,0,0,0,204",
-  "Style: Название-тень,Moyenage,48,&H10000000,&H000000FF,&H70000000,&H00000000,0,0,0,0,100,100,1,0,1,3,0,5,0,0,0,204"
+  "Style: Название,Moyenage15SHA,48,&H00FAFAFA,&H000000FF,&H40000000,&H00000000,0,0,0,0,100,100,1,0,1,0.6,0,5,0,0,0,204",
+  "Style: Название-тень,Moyenage15SHA,48,&H10000000,&H000000FF,&H70000000,&H00000000,0,0,0,0,100,100,1,0,1,3,0,5,0,0,0,204"
  ],
- "fonts_note": "Cormorant Garamond Bold (OFL), Palatino Linotype Bold (Windows), Moyenage - ship them with the release",
+ "fonts_note": "chosen by the user 2026-10-07 from fonts-online.ru (references/fonts.md): Calligrapher (place signs), BeaumarchaisC (cards), Moyenage15SHA (episode titles) - not on Google Fonts, download them there and `TS fonts --import`; Palatino Linotype Bold (Windows) for the logo line; assemble ships them with the release",
  "card": {
   "layers": [
    {"style": "Карточка-ореол", "layer": 15, "tags": "\\blur4.5"},

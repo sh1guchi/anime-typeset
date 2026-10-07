@@ -303,7 +303,7 @@ def candidates(target, em, target_em, text, cats=None, online=True, italic=False
         log(f"  online: {len(got)}/{len(jobs)} faces measured" + (f" (categories {', '.join(cats)})" if cats else ""))
         pool += got
     out, rej = [], {"thin": 0, "full-width": 0, "missing letters": 0, "unreadable": 0}
-    need = {c for c in text if not c.isspace()}
+    need = {c for c in text.replace("\\N", " ") if not c.isspace()}     # \N is a line break, not letters
     for p in pool:
         f = measure(p["path"], p["index"], em)
         if not f:
@@ -341,7 +341,73 @@ def resolve(c, italic=False):
         r = c["rec"]
         c["name"] = r["family"]
         c["bold"] = bool(r["bold"])
+    # the name libass really finds this file by (some .otf only by the PostScript name on Windows)
+    ln = fontlib.libass_name(c["file"], c.get("index", 0), c["name"], c["bold"], italic)
+    if ln is None:
+        c["warn"] = c.get("warn", []) + ["libass picks another font"]
+    else:
+        c["name"], c["bold"] = ln
     return c
+
+
+def specimen(text, out, grep=None, per_page=48, cols=4, dark=True):
+    """the whole installed Cyrillic collection set in `text` (\\N = new line), one tile per family (its face
+    nearest Regular), pages <out>_1.jpg, ...: for choosing by eye - character, which the strokes don't measure.
+    Fonts without the letters or with full-width Cyrillic are left out. Returns (pages, skipped families)"""
+    from .inspect import label
+    lines = text.replace("\\N", "\n").split("\n")
+    need = "".join({c for c in "".join(lines) if not c.isspace()})
+    best = {}
+    for r in fonts.index():
+        if not r["cyr"] or not r["family"] or r["italic"]:
+            continue
+        fam = r["tfamily"] or r["family"]
+        if grep and grep.lower() not in (fam + " " + r["path"]).lower():
+            continue
+        if fam not in best or abs(r["weight"] - 400) < abs(best[fam]["weight"] - 400):
+            best[fam] = r
+    W, H, S = 420, 130, 100
+    bg, fg = ((32, 32, 32), 255) if dark else ((235, 235, 235), 0)
+    tiles, skipped = [], []
+    for fam in sorted(best, key=str.lower):
+        r = best[fam]
+        try:
+            if fonts.missing_glyphs(r, need):
+                raise ValueError("letters")
+            f = ImageFont.truetype(r["path"], S, index=r["index"])
+            if np.mean([f.getlength(c) for c in need]) > 0.8 * S:          # full-width Cyrillic
+                raise ValueError("full-width")
+            cw = int(max(f.getlength(l) for l in lines)) + 2 * S
+            im = Image.new("L", (cw, int(S * 1.5 * len(lines)) + 2 * S), 0)
+            d = ImageDraw.Draw(im)
+            for i, l in enumerate(lines):
+                w_ = f.getlength(l)
+                d.text(((cw - w_) / 2, S * 1.5 * (i + 1)), l, fill=255, font=f, anchor="ls")
+            bb = im.getbbox()
+            if not bb:
+                raise ValueError("empty")
+            im = im.crop(bb)
+            k = min((W - 16) / im.width, (H - 30) / im.height)
+            im = im.resize((max(1, int(im.width * k)), max(1, int(im.height * k))), Image.LANCZOS)
+        except Exception:
+            skipped.append(fam)
+            continue
+        t = Image.new("RGB", (W, H), bg)
+        ink = Image.new("RGB", im.size, (fg,) * 3)
+        t.paste(ink, ((W - im.width) // 2, 20 + (H - 24 - im.height) // 2), im)
+        tiles.append(label(t, f"{fam}  ({os.path.basename(r['path'])})"))   # the file: some fonts claim a
+        # system family name (an Old English 'old.ttf' calls itself Times New Roman)
+    pages = []
+    base, ext = os.path.splitext(out)
+    for n in range(0, len(tiles), per_page):
+        chunk = tiles[n:n + per_page]
+        rows = (len(chunk) + cols - 1) // cols
+        pg = Image.new("RGB", (W * cols, H * rows), (0, 0, 0))
+        for i, t in enumerate(chunk):
+            pg.paste(t, ((i % cols) * W, (i // cols) * H))
+        pages.append(f"{base}_{n // per_page + 1}{ext or '.jpg'}")
+        pg.save(pages[-1], quality=88)
+    return pages, skipped
 
 
 def picked(name, target, em, target_em, text, k=1.0, italic=False, min_px=1.8, bold=None, src="with"):
@@ -350,7 +416,7 @@ def picked(name, target, em, target_em, text, k=1.0, italic=False, min_px=1.8, b
     family -> its best weight. None when neither has it; c['warn'] = what candidates() would have rejected"""
     fam, _, w = name.partition(":")
     fam, w = fam.strip(), int(w) if w.strip().isdigit() else None
-    need = "".join({c for c in text if not c.isspace()})
+    need = "".join({c for c in text.replace("\\N", " ") if not c.isspace()})
     if bold is not None:
         r = fonts.lookup(fam, bold, italic)
         recs = [r] if r else []
@@ -396,7 +462,7 @@ def sheet(video, frame, crop, cands, text, pos, em, colour, outline, bord, out, 
     ims = [label(Image.fromarray(video.grab(frame, 1, crop=crop)[0]), orig_label)]
     jobs = []
     for i, c in enumerate(cands):
-        rec = fonts.lookup(c["name"], c["bold"], c.get("italic", False))
+        rec = c.get("rec") or fonts.lookup(c["name"], c["bold"], c.get("italic", False))
         if rec is None:
             continue
         met = fonts.metrics(rec)

@@ -113,6 +113,92 @@ def ass_face(path, index=0):
     return fam, "bold" in sub, "italic" in sub or "oblique" in sub
 
 
+def import_fonts(paths):
+    """font files / .zip archives / folders (a download from fonts-online.ru etc.) copied into the library -
+    never moved or renamed, the originals stay where they are. Returns [(file in the library, its faces)]"""
+    import shutil, zipfile
+    lib = library_dir()
+    exts = (".ttf", ".otf", ".ttc")
+    out = []
+
+    def keep(name, data):
+        dst = os.path.join(lib, os.path.basename(name))
+        if not os.path.exists(dst):
+            with open(dst, "wb") as fh:
+                fh.write(data)
+        out.append(dst)
+    for p in paths:
+        p = os.path.expanduser(p)
+        files = [os.path.join(r, f) for r, _, fs in os.walk(p) for f in fs] if os.path.isdir(p) else [p]
+        for f in files:
+            if f.lower().endswith(exts):
+                dst = os.path.join(lib, os.path.basename(f))
+                if os.path.abspath(f) != os.path.abspath(dst) and not os.path.exists(dst):
+                    shutil.copy2(f, dst)
+                out.append(dst)
+            elif f.lower().endswith(".zip"):
+                with zipfile.ZipFile(f) as z:
+                    for n in z.namelist():
+                        if n.lower().endswith(exts) and not n.startswith("__MACOSX"):
+                            keep(n, z.read(n))
+    fonts.add_dirs([lib], force=True)
+    recs = fonts.index()
+    return [(f, [r for r in recs if os.path.abspath(r["path"]) == os.path.abspath(f)]) for f in dict.fromkeys(out)]
+
+
+_SEL = re.compile(r"fontselect: \((.*), (\d+), (\d+)\) -> (.*?), \d+, ")
+
+
+def libass_name(path, index, name, bold=False, italic=False):
+    """(Fontname, bold flag) under which libass - ffmpeg with this machine's font provider + the library - picks
+    this very file: `name` itself, else its PostScript / full name. On Windows (DirectWrite) some CFF .otf
+    faces are found only by those: 'Arno Pro' / 'Garamond Premier Pro' fall back to Arial by family. The
+    family name kept when the check can't run; None when libass picks another file under every name. Cached"""
+    import subprocess, tempfile
+    from fontTools.ttLib import TTFont, TTCollection
+    ft = TTCollection(path, lazy=True).fonts[index] if path.lower().endswith(".ttc") else TTFont(path, lazy=True)
+    ps, full = ft["name"].getDebugName(6) or "", ft["name"].getDebugName(4) or ""
+    key = f"{path}|{index}|{os.path.getmtime(path):.0f}|{name}|{bold}|{italic}"
+    cp = os.path.join(CACHE, "libass_names.json")
+    try:
+        with open(cp, encoding="utf-8") as fh:
+            cache = json.load(fh)
+    except Exception:
+        cache = {}
+    if key in cache:
+        return tuple(cache[key]) if cache[key] else None
+    tries = [(name, bold)] + [(n, False) for n in (ps, full) if n and n != name]
+    st = "".join(f"Style: S{i},{n},20,&H00FFFFFF,&H000000FF,&H00000000,&H00000000,{-1 if b else 0},"
+                 f"{-1 if italic else 0},0,0,100,100,0,0,1,0,0,7,0,0,0,1\n" for i, (n, b) in enumerate(tries))
+    ev = "".join(f"Dialogue: 0,0:00:00.00,0:00:01.00,S{i},,0,0,0,,{{\\pos(0,{20 * i})}}Ц\n" for i in range(len(tries)))
+    res = (name, bold)
+    with tempfile.TemporaryDirectory() as td:
+        with open(os.path.join(td, "t.ass"), "w", encoding="utf-8-sig") as fh:
+            fh.write("[Script Info]\nScriptType: v4.00+\nPlayResX: 200\nPlayResY: 200\n\n[V4+ Styles]\nFormat: Name, "
+                     "Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, "
+                     "Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, "
+                     "MarginL, MarginR, MarginV, Encoding\n" + st + "\n[Events]\nFormat: Layer, Start, End, Style, "
+                     "Name, MarginL, MarginR, MarginV, Effect, Text\n" + ev)
+        sub = "subtitles=t.ass"
+        if video.FONTSDIR and os.path.isdir(video.FONTSDIR):
+            sub += ":fontsdir='" + os.path.abspath(video.FONTSDIR).replace("\\", "/").replace(":", "\\:") + "'"
+        try:
+            r = subprocess.run(["ffmpeg", "-hide_banner", "-loglevel", "verbose", "-f", "lavfi", "-i",
+                                "color=s=200x200:d=0.1", "-vf", sub, "-frames:v", "1", "-f", "null", "-"],
+                               cwd=td, capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=120)
+            got = {m.group(1): m.group(4) for m in _SEL.finditer(r.stderr)}
+        except Exception:
+            return res
+    if not got:
+        return res                                  # no fontselect lines: can't tell, keep the family name
+    res = next(((n, b) for n, b in tries if got.get(n) == ps), None)     # None: libass never picks this file
+    cache[key] = list(res) if res else None
+    os.makedirs(CACHE, exist_ok=True)
+    with open(cp, "w", encoding="utf-8") as fh:
+        json.dump(cache, fh, ensure_ascii=False)
+    return res
+
+
 def _init():
     lib = _cfg().get("font_library") or os.path.join(CACHE, "fontlib")
     if os.path.isdir(lib):

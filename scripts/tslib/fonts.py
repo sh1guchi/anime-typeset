@@ -9,6 +9,7 @@ SYSTEM_DIRS = [os.path.join(os.environ.get("WINDIR", r"C:\Windows"), "Fonts"),
                os.path.expandvars(r"%LOCALAPPDATA%\Microsoft\Windows\Fonts"),
                os.path.expanduser("~/.fonts"), "/usr/share/fonts", "/Library/Fonts", os.path.expanduser("~/Library/Fonts")]
 CACHE = os.path.join(os.path.expanduser("~"), ".cache", "anime-typeset", "fonts.json")
+VER = 2                     # record fields; a cache of another version is rescanned
 _index = None
 _extra = []
 
@@ -51,6 +52,7 @@ def _scan_file(p):
             winA, winD = (os2.usWinAscent, os2.usWinDescent) if os2 and (os2.usWinAscent + os2.usWinDescent) else (hhea.ascent, -hhea.descent)
             recs.append(dict(path=p, index=i, family=n.getDebugName(1) or "", sub=n.getDebugName(2) or "",
                              tfamily=n.getDebugName(16) or "", full=n.getDebugName(4) or "",
+                             ps=n.getDebugName(6) or "",
                              bold=bool(head.macStyle & 1) or bool(os2 and os2.usWeightClass >= 600),
                              italic=bool(head.macStyle & 2), weight=os2.usWeightClass if os2 else 400,
                              cyr=(0x0416 in cmap and 0x0451 in cmap), upm=head.unitsPerEm, winA=winA, winD=winD,
@@ -69,9 +71,10 @@ def index():
     old = {}
     try:
         c = json.load(open(CACHE, encoding="utf-8"))
-        if c.get("key") == key:
-            _index = c["fonts"]; return _index
-        old = c.get("files") or {}
+        if c.get("v") == VER:
+            if c.get("key") == key:
+                _index = c["fonts"]; return _index
+            old = c.get("files") or {}
     except Exception:
         pass
     # incremental: only new / changed files are opened (a downloaded font must not rescan the whole system)
@@ -86,16 +89,18 @@ def index():
     os.makedirs(os.path.dirname(CACHE), exist_ok=True)
     tmp = f"{CACHE}.{os.getpid()}.tmp"
     with open(tmp, "w", encoding="utf-8") as fh:
-        json.dump({"key": key, "fonts": recs, "files": per}, fh, ensure_ascii=False)
+        json.dump({"v": VER, "key": key, "fonts": recs, "files": per}, fh, ensure_ascii=False)
     os.replace(tmp, CACHE)
     _index = recs
     return recs
 
 
 def lookup(family, bold=False, italic=False):
-    """closest face of `family` (name ID 1 or 16), preferring the requested bold/italic"""
+    """closest face of `family` (name ID 1 or 16, or a face's full / PostScript name - libass on Windows finds
+    some .otf faces only by those, fontlib.libass_name), preferring the requested bold/italic"""
     fam = family.strip().lower()
-    cands = [r for r in index() if r["family"].lower() == fam or r["tfamily"].lower() == fam or r["full"].lower() == fam]
+    cands = [r for r in index() if fam in (r["family"].lower(), r["tfamily"].lower(), r["full"].lower(),
+                                           r.get("ps", "").lower())]
     if not cands:
         return None
     def score(r):
