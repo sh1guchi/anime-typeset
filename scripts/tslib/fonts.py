@@ -13,12 +13,15 @@ _index = None
 _extra = []
 
 
-def add_dirs(dirs):
-    """project font dirs (e.g. the release's fonts folder) take part in lookups"""
+def add_dirs(dirs, force=False):
+    """project font dirs (e.g. the release's fonts folder, the font library) take part in lookups;
+    force: re-read them (a font was just added)"""
     global _index
     for d in dirs:
-        if d and os.path.isdir(d) and d not in _extra:
-            _extra.append(d); _index = None
+        if d and os.path.isdir(d) and (d not in _extra or force):
+            if d not in _extra:
+                _extra.append(d)
+            _index = None
 
 
 def _files(dirs):
@@ -63,19 +66,27 @@ def index():
         return _index
     files = _files(SYSTEM_DIRS + _extra)
     key = hashlib.md5("|".join(f"{p}:{os.path.getmtime(p):.0f}" for p in files).encode("utf-8", "ignore")).hexdigest()
+    old = {}
     try:
         c = json.load(open(CACHE, encoding="utf-8"))
         if c.get("key") == key:
             _index = c["fonts"]; return _index
+        old = c.get("files") or {}
     except Exception:
         pass
-    recs = []
+    # incremental: only new / changed files are opened (a downloaded font must not rescan the whole system)
+    recs, per = [], {}
     for p in files:
-        recs += _scan_file(p)
+        k = f"{p}:{os.path.getmtime(p):.0f}"
+        r = old.get(k)
+        if r is None:
+            r = _scan_file(p)
+        per[k] = r
+        recs += r
     os.makedirs(os.path.dirname(CACHE), exist_ok=True)
     tmp = f"{CACHE}.{os.getpid()}.tmp"
     with open(tmp, "w", encoding="utf-8") as fh:
-        json.dump({"key": key, "fonts": recs}, fh, ensure_ascii=False)
+        json.dump({"key": key, "fonts": recs, "files": per}, fh, ensure_ascii=False)
     os.replace(tmp, CACHE)
     _index = recs
     return recs
@@ -88,7 +99,11 @@ def lookup(family, bold=False, italic=False):
     if not cands:
         return None
     def score(r):
-        return (r["bold"] == bool(bold)) * 2 + (r["italic"] == bool(italic)) + (r["family"].lower() == fam) * 0.5
+        # as libass picks: the weight nearest to 400 (700 when bold) - "Arial" must be arial.ttf, not a Medium
+        # face that happens to share the family name (ArialMdm.ttf from a release's fonts.zip)
+        w = r.get("weight") or (700 if r["bold"] else 400)
+        return ((r["bold"] == bool(bold)) * 2 + (r["italic"] == bool(italic)) + (r["family"].lower() == fam) * 0.5
+                - abs(w - (700 if bold else 400)) / 1000 + r.get("cyr", False) * 0.05)
     return max(cands, key=score)
 
 

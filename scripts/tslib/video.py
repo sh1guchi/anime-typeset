@@ -5,6 +5,10 @@ from concurrent.futures import ThreadPoolExecutor
 import numpy as np
 from . import coords
 
+# fonts libass loads on every render besides the installed ones: the font library (downloaded fonts) - set by
+# tslib.fontlib on import from ~/.anime-typeset.json "font_library" (see references/technique.md, "Шрифты")
+FONTSDIR = None
+
 
 class Video:
     def __init__(self, path):
@@ -101,10 +105,13 @@ class Video:
 
     # --- rendering with subtitles
     def _sub_vf(self, assname, fontsdir=None, w=None, h=None):
+        """fontsdir: absolute path (any drive) - libass loads every font in it besides the installed ones"""
         w, h = w or coords.AW, h or coords.AH
         sub = f"subtitles={assname}"
-        if fontsdir:
-            sub += f":fontsdir={fontsdir}"
+        fontsdir = fontsdir or FONTSDIR
+        if fontsdir and os.path.isdir(fontsdir):
+            fd = os.path.abspath(fontsdir).replace("\\", "/").replace(":", "\\:").replace("'", "")
+            sub += f":fontsdir='{fd}'"
         return f"{self.tag},scale={w}:{h}:flags=lanczos,{sub}"
 
     def render(self, ass_path, frames, outdir, prefix="r", crop=None, w=None, h=None, fontsdir=None, jobs=4):
@@ -112,14 +119,14 @@ class Video:
         outdir = os.path.abspath(outdir)     # ffmpeg runs with cwd=outdir: a relative output path would double up
         os.makedirs(outdir, exist_ok=True)
         final = outdir
-        if len(os.path.abspath(outdir)) > 180 and not fontsdir:
+        if len(os.path.abspath(outdir)) > 180:
             # ffmpeg runs with cwd=outdir (a drive letter in the subtitles= path breaks the filter parser);
             # Windows refuses a cwd near MAX_PATH (WinError 267) - render in a short temp folder instead
             import tempfile
             outdir = tempfile.mkdtemp(prefix="tsr_")
         tmp = f"_{prefix}.ass"
         shutil.copyfile(ass_path, os.path.join(outdir, tmp))
-        fd = os.path.relpath(fontsdir, outdir).replace("\\", "/") if fontsdir else None
+        fd = fontsdir
 
         def one(n):
             vf = (self._sub_vf(tmp, fd, w, h) +
@@ -163,7 +170,7 @@ class Video:
         os.makedirs(workdir, exist_ok=True)
         amap = self.audio_map()
         shutil.copyfile(ass_path, os.path.join(workdir, "_preview.ass"))
-        fd = os.path.relpath(fontsdir, workdir).replace("\\", "/") if fontsdir else None
+        fd = fontsdir
         cm = "bt709" if self.matrix == "709" else "bt601"
         parts = []
         for i, (a, b) in enumerate(ranges):

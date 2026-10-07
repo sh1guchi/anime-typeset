@@ -12,8 +12,11 @@
   ruler    --video V --frames a:b --box x0,y0,x1,y1 --out f.png [--std]      median crop with px rulers
   geom     -c episode.json --frames a:b --box x0,y0,x1,y1 [--no-title]       card geometry for a box
   fonts    [--cyr] [--grep text]                                            installed fonts
+  fonts    -c episode.json --match id [--box ..] [--category ..] [--text ..]   rank installed + Google fonts by the original
+  fonts    --get "Family[:weight]"                                           download a Google font into the library
   fonts    -c episode.json --try "A,B,C" --frame N --text T --pos x,base --em 60 [--colour --outline --bord --tags --crop] --out f.jpg
                                                                            candidate faces rendered over a frame
+  place    -c episode.json id --box x0,y0,x1,y1 [--quad ..] [--text ..]     the original's plane + Russian set into it
   track    -c episode.json --frames a:b --roi x,y,w,h [--roi ...]          background track per ROI (2D / x / y), no build
   probe    -c episode.json --frames a:b --box x0,y0,x1,y1 [--bg box]       glyph vs background stats -> detect thresholds
   set      -c episode.json id.key=value [@top=value ...] [--from patch.json] edit the config (JSON values; empty = remove)
@@ -300,15 +303,184 @@ def cmd_geom(a):
     print("zones:", zones_from_geom(g))
 
 
+def _item_text(it):
+    """the Russian text of an item (first text spec / card name), for font samples"""
+    for k in ("text", "texts", "plain"):
+        v = it.get(k)
+        for s in (v if isinstance(v, list) else [v]):
+            if isinstance(s, dict) and s.get("text"):
+                return s["text"].replace("\\N", " ")
+    for c in it.get("cards", []):
+        return c.get("name", "")
+    return it.get("name", "")
+
+
+def cmd_fonts_match(a):
+    """rank the installed + online fonts by how close their strokes are to the original text, sheet of the best"""
+    import json as _json
+    import numpy as np
+    from tslib.ctx import Ctx
+    from tslib import fontmatch
+    ctx = Ctx(a.config)
+    v = ctx.video
+    it = next((i for i in ctx.cfg["items"] if i["id"] == a.match), None) if a.match else None
+    if a.match and it is None:
+        raise SystemExit(f"no item {a.match}")
+    box = box_arg(a.box) if a.box else None
+    if box is None and it is not None:
+        z = it.get("zones", [it.get("zone")]) if (it.get("zones") or it.get("zone")) else []
+        z = z[0] if z else None
+        box = [int(c) for c in (z["box"] if isinstance(z, dict) else z)] if z else None
+    if box is None:
+        raise SystemExit("give --box x0,y0,x1,y1 around ONE line of the original text")
+    frame = a.frame if a.frame is not None else ((it["frames"][0] + it["frames"][1]) // 2 if it else None)
+    if frame is None:
+        raise SystemExit("give --frame")
+    det = it.get("detect") if it and it.get("type") == "plate" and not a.box else None
+    mask, em_n, em0, pol, col = fontmatch.original_native(v, frame, box, a.polarity, det)
+    target = fontmatch.features(mask, em_n)
+    text = a.text or (_item_text(it) if it else "") or fontmatch.fontlib.SAMPLE
+    cats = [c.strip() for c in a.category.split(",")] if a.category else None
+    # the Russian size: cap height ~0.78 of the kanji (as on the cards / place signs), and no wider than the
+    # original line by more than 10% (measured with a typical face; the sheet shows each face at this em)
+    from tslib import fonts as _f
+    ys, xs = np.nonzero(mask)
+    ink_w = (xs.max() - xs.min() + 1) * em0 / em_n if len(xs) else (box[2] - box[0])
+    ref = _f.lookup("Arial") or (_f.index()[0] if _f.index() else None)
+    em = a.em or 0.78 * em0
+    if not a.em and ref is not None:
+        tw = _f.text_width(ref, text, em)
+        if tw > 1.1 * ink_w:
+            em *= 1.1 * ink_w / tw
+    print(f"original: {pol} text, em {em0:.0f} px, stroke {target['w'] * em0:.1f} px ({target['w']:.3f} em), "
+          f"contrast {target['contrast']:.2f}, roughness {target['rough']:.3f}; Russian at em {em:.0f}")
+    cands, rej = fontmatch.candidates(target, em_n, em, text, cats=cats, online=not a.offline, italic=a.italic,
+                                      min_px=a.min_px)
+    print("  rejected: " + ", ".join(f"{k} {n}" for k, n in rej.items() if n))
+    top = cands[:a.top]
+    for c in top:
+        fontmatch.resolve(c, a.italic)
+    for i, c in enumerate(top, 1):
+        f = c["feat"]
+        print(f"  {i}. {c['name']}{' (bold)' if c['bold'] else ''}  [{c['source']}{', ' + c['cat'] if c.get('cat') else ''}]"
+              f"  score {c['score']:.2f}  stroke {f['w'] * em:.1f}px contrast {f['contrast']:.2f} rough {f['rough']:.3f}")
+    if len(top) > 1 and top[1]["score"] - top[0]["score"] < 0.15:
+        print("  the best ones are close - show the sheet to the user and ask (SKILL.md, font choice)")
+    colour = a.colour or "&H00{:02X}{:02X}{:02X}&".format(*[int(round(x)) for x in col[::-1]])
+    x0, y0, x1, y1 = box
+    if len(xs):                                       # baseline: kanji sit ~0.12 em below it
+        ink_bot = box[1] + ys.max() * em0 / em_n
+        ink_cx = box[0] + (xs.min() + xs.max()) / 2 * em0 / em_n
+    else:
+        ink_bot, ink_cx = y1, (x0 + x1) / 2
+    pos = [float(p) for p in a.pos.split(",")] if a.pos else (ink_cx, ink_bot - 0.12 * em0)
+    pad_x, pad_y = max(60, (x1 - x0) // 3), max(40, (y1 - y0))
+    crop = box_arg(a.crop) if a.crop else [max(0, x0 - pad_x), max(0, y0 - pad_y), min(coords_aw(), x1 + pad_x), min(coords_ah(), y1 + pad_y)]
+    out = a.out or ctx.path("check", f"fonts_{a.match or 'box'}.jpg")
+    under = under_st = None
+    if it is not None and ctx.load_lines(it["id"]) is not None:       # built: show the faces over the erased frame
+        from tslib.assdoc import ev_style
+        from tslib.text import parse_style
+        under = [l for l in ctx.load_lines(it["id"])["lines"] if ev_style(l) == "Маска"]
+        under_st = (ctx.playres, [l for l in ctx.all_style_lines if parse_style(l)["Name"] == "Маска"])
+    fontmatch.sheet(v, frame, crop, top, text, pos, em, colour, a.outline, a.bord, out,
+                    ctx.path("check", "_fonts"), orig_label=f"original ({pol}, em {em0:.0f})",
+                    under=under, under_styles=under_st)
+    if a.json:
+        with open(a.json, "w", encoding="utf-8") as fh:
+            _json.dump([{k: c[k] for k in ("name", "bold", "italic", "source", "family", "weight", "score", "file")
+                         if k in c} for c in top], fh, ensure_ascii=False, indent=1)
+    print(out)
+
+
+def cmd_place(a):
+    """the original text's plane (quad) + the Russian text set into it, over the frame: for signs at an angle"""
+    import json as _json
+    import numpy as np
+    from PIL import Image, ImageDraw
+    from tslib.ctx import Ctx
+    from tslib import fontmatch, persp, coords
+    from tslib.assdoc import header, write_lines, ev_style
+    from tslib.text import emit_text, parse_style
+    from tslib.inspect import label, tile, fit_area
+    ctx = Ctx(a.config)
+    v = ctx.video
+    it = next((i for i in ctx.cfg["items"] if i["id"] == a.item), None)
+    if it is None:
+        raise SystemExit(f"no item {a.item}")
+    frame = a.frame if a.frame is not None else (it["frames"][0] + it["frames"][1]) // 2
+    if a.quad:
+        q = [float(x) for x in a.quad.split(",")]
+        quad = [[q[0], q[1]], [q[2], q[3]], [q[4], q[5]], [q[6], q[7]]]
+        info = {}
+    else:
+        if not a.box:
+            raise SystemExit("give --box around ONE line of the original text (or --quad)")
+        box = box_arg(a.box)
+        det = it.get("detect") if it.get("type") == "plate" else None
+        mask, em_n, em0, pol, col = fontmatch.original_native(v, frame, box, a.polarity, det)
+        s = em0 / em_n                                   # native px -> analysis px
+        quad, info = persp.auto_quad(mask, perspective=a.perspective)
+        quad = [[box[0] + x * s, box[1] + y * s] for x, y in quad]
+    print("quad (analysis px, TL TR BR BL): " + _json.dumps([[round(x, 1), round(y, 1)] for x, y in quad]))
+    if info:
+        print(f"  text direction {info['angle']:+.2f} deg" + (f", top / bottom lines converge: slopes "
+              f"{info['top_slope']:+.4f} / {info['bottom_slope']:+.4f} (mean residual {info['top_err']:.1f} / "
+              f"{info['bottom_err']:.1f} px) - check the quad on the sheet" if info["perspective"] else
+              " (rotated rectangle; --perspective for converging lines, or --quad from the sign's own edges)"))
+    spec = {"text": a.text or _item_text(it), "quad": quad, "preset": a.preset}
+    for k in ("cap", "base_frac", "maxw_frac"):
+        if getattr(a, k) is not None:
+            spec[k] = getattr(a, k)
+    lines, _ = emit_text(ctx, spec, frame, frame)
+    under = []
+    if ctx.load_lines(it["id"]) is not None:
+        under = [l for l in ctx.load_lines(it["id"])["lines"] if ev_style(l) == "Маска"]
+    used = {ev_style(l) for l in lines + under}
+    styles = [l for l in ctx.all_style_lines if parse_style(l)["Name"] in used]
+    p = ctx.path("check", f"_place_{it['id']}.ass")
+    write_lines(p, header("place", ctx.playres, v.ycbcr, styles) + under + lines)
+    xs = [x for x, _ in quad]; ys = [y for _, y in quad]
+    crop = fit_area([min(xs) - 80, min(ys) - 60, max(xs) + 80, max(ys) + 60])
+    r = Image.open(v.render(p, [frame], ctx.path("check", "_tmp"), prefix="place", crop=crop)[0]).convert("RGB")
+    o = Image.fromarray(v.grab(frame, 1, crop=crop)[0])
+    d = ImageDraw.Draw(o)
+    d.line([(x - crop[0], y - crop[1]) for x, y in quad + [quad[0]]], fill=(0, 255, 0), width=2)
+    out = a.out or ctx.path("check", f"place_{it['id']}.jpg")
+    tile([label(o, "original + quad"), label(r, "Russian in the quad")], 1, out)
+    print(f"  config: \"text\": {{..., \"quad\": {_json.dumps([[round(x, 1), round(y, 1)] for x, y in quad])}}}")
+    print(out)
+
+
+def coords_aw():
+    from tslib import coords
+    return coords.AW
+
+
+def coords_ah():
+    from tslib import coords
+    return coords.AH
+
+
 def cmd_fonts(a):
     from tslib import fonts
+    if a.match or a.box:
+        return cmd_fonts_match(a)
+    if a.get:
+        from tslib import fontlib
+        fam, _, w = a.get.partition(":")
+        p = fontlib.full_file(fam.strip(), int(w or 400), a.italic)
+        name, bold, ital = fontlib.ass_face(p)
+        print(f"{p}\n  in a script: Fontname '{name}', Bold {-1 if bold else 0}, Italic {-1 if ital else 0}")
+        return
     if a.try_:
         from tslib.tools import try_fonts
         if not (a.frame is not None and a.text and a.pos and a.out):
             raise SystemExit("--try needs --frame, --text, --pos x,base and --out")
         x, b = [float(v) for v in a.pos.split(",")]
         print(try_fonts(_video(a), a.frame, a.text, [f.strip() for f in a.try_.split(",") if f.strip()], a.out,
-                        pos=(x, b), em=a.em, colour=a.colour, outline=a.outline, bord=a.bord, tags=a.tags or "",
+                        pos=(x, b), em=a.em or 60, colour=a.colour or "&H00303030&", outline=a.outline, bord=a.bord,
+                        tags=a.tags or "",
                         crop=box_arg(a.crop)))
         return
     seen = set()
@@ -482,7 +654,7 @@ def cmd_compact(a):
     import shutil
     from tslib import coords
     from tslib.ctx import read_playres
-    from tslib.compact import compact_lines
+    from tslib.compact import compact_lines, short_names
     from tslib.assdoc import backup_path
     for path in a.files:
         coords.set_playres(read_playres(path)[0])
@@ -490,7 +662,7 @@ def cmd_compact(a):
             src = fh.read()
         nl = "\r\n" if "\r\n" in src else "\n"
         lines = src.split(nl)
-        out = compact_lines(lines)
+        out = short_names(compact_lines(lines))
         before = os.path.getsize(path)
         b = backup_path(path, " (до сжатия)")
         if not os.path.exists(b):
@@ -540,10 +712,25 @@ def main():
     p = sp.add_parser("fonts"); p.add_argument("--cyr", action="store_true"); p.add_argument("--grep")
     p.add_argument("--try", dest="try_", help="comma-separated families to render over --frame")
     p.add_argument("--video"); p.add_argument("-c", "--config"); p.add_argument("--frame", type=int); p.add_argument("--text")
-    p.add_argument("--pos", help="x,baseline (analysis px)"); p.add_argument("--em", type=float, default=60)
-    p.add_argument("--colour", default="&H00303030&"); p.add_argument("--outline", default="&H00FFFFFF&")
+    p.add_argument("--pos", help="x,baseline (analysis px)"); p.add_argument("--em", type=float)
+    p.add_argument("--colour"); p.add_argument("--outline", default="&H00FFFFFF&")
     p.add_argument("--bord", type=float, default=0.0); p.add_argument("--tags"); p.add_argument("--crop"); p.add_argument("--out")
+    p.add_argument("--match", help="item id: rank fonts by the strokes of its original text")
+    p.add_argument("--box", help="x0,y0,x1,y1 around one line of the original text (default: the item's first zone)")
+    p.add_argument("--polarity", choices=("light", "dark")); p.add_argument("--category", help="serif,sans-serif,display,handwriting")
+    p.add_argument("--top", type=int, default=8); p.add_argument("--offline", action="store_true", help="installed fonts only")
+    p.add_argument("--italic", action="store_true"); p.add_argument("--min-px", type=float, default=2.2,
+                                                                    help="thinnest acceptable stroke at the real size (1080p px)")
+    p.add_argument("--json", help="write the ranked candidates here")
+    p.add_argument("--get", help="'Family[:weight]' - download a Google font into the library")
     p.set_defaults(fn=cmd_fonts)
+    p = sp.add_parser("place"); p.add_argument("-c", "--config", required=True); p.add_argument("item")
+    p.add_argument("--box", help="x0,y0,x1,y1 around one line of the original text: its quad is measured")
+    p.add_argument("--quad", help="x,y,x,y,x,y,x,y (TL TR BR BL) instead of measuring")
+    p.add_argument("--frame", type=int); p.add_argument("--text"); p.add_argument("--preset", default="sign")
+    p.add_argument("--polarity", choices=("light", "dark")); p.add_argument("--perspective", action="store_true")
+    p.add_argument("--cap", type=float); p.add_argument("--base-frac", dest="base_frac", type=float)
+    p.add_argument("--maxw-frac", dest="maxw_frac", type=float); p.add_argument("--out"); p.set_defaults(fn=cmd_place)
     p = sp.add_parser("track"); p.add_argument("--video"); p.add_argument("-c", "--config"); p.add_argument("--frames", required=True)
     p.add_argument("--roi", action="append", required=True, help="x,y,w,h (repeat to compare ROIs)")
     p.add_argument("--scale", type=float, action="append"); p.set_defaults(fn=cmd_track)

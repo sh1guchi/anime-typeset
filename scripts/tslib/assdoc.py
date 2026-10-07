@@ -15,6 +15,7 @@ def read_lines(path):
 
 
 def write_lines(path, lines):
+    os.makedirs(os.path.dirname(os.path.abspath(path)), exist_ok=True)
     with open(path, "w", encoding="utf-8-sig", newline="\r\n") as fh:
         fh.write("\n".join(lines) + "\n")
 
@@ -112,8 +113,56 @@ def assemble(ctx, out_path, title=None):
     styles = [l for l in ctx.all_style_lines if parse_style(l)["Name"] in used]
     backup_once(out_path)
     name = title or os.path.splitext(os.path.basename(out_path))[0]
-    write_lines(out_path, header(name, ctx.playres, ctx.video.ycbcr, styles) + events)
+    from .compact import short_names
+    write_lines(out_path, short_names(header(name, ctx.playres, ctx.video.ycbcr, styles) + events))
+    if ctx.cfg.get("release_fonts", True):
+        release_fonts(out_path, styles, events)
     return len(events)
+
+
+def release_fonts(out_path, styles, events):
+    """every font the signs use, copied to <signs folder>/шрифты/ - to mux into the release (the web player and
+    the viewers have none of the downloaded ones). Patch-only styles (drawings) need no font."""
+    import re, shutil
+    from . import fonts
+    from .text import parse_style
+    drawn_only = set()
+    used = {}
+    for l in events:
+        if not l.startswith("Dialogue:"):
+            continue
+        st = ev_style(l)
+        txt = l.split(",", 9)[9]
+        if "\\p1" in txt and "\\p0" not in txt:      # a drawing (patch, line, ornament): no font
+            drawn_only.add(st)
+            continue
+        used.setdefault(st, set())
+        for fn in re.findall(r"\\fn([^\\}]+)", txt):
+            used[st].add(fn.strip())
+    faces = set()
+    for l in styles:
+        d = parse_style(l)
+        if d["Name"] in used:
+            faces.add((d["Fontname"].lstrip("@"), d["Bold"] not in ("0", 0)))
+            for fn in used[d["Name"]]:
+                faces.add((fn, d["Bold"] not in ("0", 0)))
+    out_dir = os.path.join(os.path.dirname(os.path.abspath(out_path)), "шрифты")
+    copied, missing = [], []
+    for fam, bold in sorted(faces):
+        recs = [r for r in fonts.index() if fam.lower() in (r["family"].lower(), r["tfamily"].lower(), r["full"].lower())]
+        if not recs:
+            missing.append(fam); continue
+        want = [r for r in recs if r["bold"] == bold] or recs           # the face libass picks, plus its family's
+        for r in {r["path"]: r for r in want}.values():                 # other face if the script fakes bold
+            os.makedirs(out_dir, exist_ok=True)
+            dst = os.path.join(out_dir, os.path.basename(r["path"]))
+            if not os.path.exists(dst) or os.path.getsize(dst) != os.path.getsize(r["path"]):
+                shutil.copy2(r["path"], dst)
+            copied.append(os.path.basename(r["path"]))
+    if copied:
+        print(f"  fonts for the release: {out_dir} <- {', '.join(sorted(set(copied)))}")
+    if missing:
+        print(f"  fonts NOT found (install or download them, then assemble again): {', '.join(missing)}")
 
 
 def event_key(line):
@@ -171,6 +220,12 @@ def merge(signs_path, subs_path, ycbcr, source_signs=None, drop_styles=()):
     have = {parse_style(l)["Name"] for l in keep}
     s0, s1 = section(sig, "[V4+ Styles]")
     new = [l for l in sig[s0 + 1:s1] if l.startswith("Style:") and parse_style(l)["Name"] not in have]
+    ours = {parse_style(l)["Name"]: l for l in sig[s0 + 1:s1] if l.startswith("Style:")}
+    for l in keep:            # a style of the subs' own called "M" would capture our patch lines
+        n_ = parse_style(l)["Name"]
+        if n_ == "M" and n_ in ours and l.strip() != ours[n_].strip():
+            raise SystemExit("the subs already have their own style 'M' - our patch style has the same name; "
+                             "rename theirs (or ours: MASK_OUT in tslib/compact.py) and merge again")
     e0, e1 = section(sig, "[Events]")
     blocks, cur = [], None
     for l in sig[e0 + 2:e1]:

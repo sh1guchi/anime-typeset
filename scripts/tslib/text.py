@@ -93,11 +93,16 @@ def emit_text(ctx, spec, f0, f1, layers=None, actor="Надпись"):
     spec: text (\\N allowed), layers [{style, layer, tags, offset:[dx,dy]}] (default: preset[spec.preset or 'sign']),
       em (em size, analysis px) or fs (raw \\fs), x + base (centre x / baseline y, analysis px -> \\an2) or pos [x,y],
       maxw + fit ('shrink'|'squeeze'), spacing (analysis px), fade [in,out] ms or fade_frames [a,b], tags, an.
+      quad [[x,y] TL, TR, BR, BL]: the text set into that plane in space (persp.emit: cap, base_frac, maxw_frac,
+      align, em) - for signs at an angle / in perspective; `TS place` finds the quad of the original.
       {"source": true} instead: keep the translator's typeset lines (emit_source)."""
     if spec.get("source"):
         return emit_source(ctx, spec, f0, f1, actor)
     K = coords.K
     layers = layers or spec.get("layers") or ctx.preset[spec.get("preset", "sign")]["layers"]
+    if spec.get("quad"):            # text on a plane in space: an exact perspective drawing (tslib/persp.py)
+        from . import persp
+        return persp.emit(ctx, spec, f0, f1, layers, actor, tags=fade_tag(ctx.video, spec))
     main = spec.get("style") or layers[-1]["style"]
     text = spec["text"]
     st, en = ctx.video.atime(f0), ctx.video.atime(f1 + 1)

@@ -36,8 +36,9 @@ EFFECTS = re.compile(r"\\(bord|xbord|ybord|shad|xshad|yshad|blur|be)\d")
 def _is_patch(line, i, tags):
     """only plain patch drawings (actor 'mask', mask style without outline/shadow): libass scales outline,
     shadow and blur with \\fscx/\\fscy, so rescaling a styled drawing (card lines, ornaments) changes it"""
-    actor = line[:i].split(",")[4].strip().lower()
-    return actor in ("mask", "маска") and not EFFECTS.search(tags)
+    f = line[:i].split(",")
+    actor = f[4].strip().lower()
+    return (actor in ("mask", "маска") or f[3].strip() == MASK_OUT) and not EFFECTS.search(tags)
 
 
 def compact_drawing(line, tol_px=0.05):
@@ -186,12 +187,36 @@ def localize_clip(line, margin=1.0):
 
 
 MASK_STYLE = "Маска"     # every preset defines it with \an7, 100 % scale, no outline/shadow
+MASK_OUT = "M"           # its name in the finished files: thousands of patch lines carry the style name (and an
+                         # actor) - "Маска" + actor "маска" cost 19 bytes a line, "M" + no actor 1 (BC 2-01: -65 KB,
+                         # the same render; a shorter clip or \fsc precision is not lossless - checked, edges move)
+MASK_STYLES = (MASK_STYLE, MASK_OUT)
+
+
+def short_names(lines):
+    """finished file: the patch style 'Маска' -> 'M' (style line and events), no actor on patch lines.
+    Only for output files - built items (lines/*.json) keep 'Маска'."""
+    out = []
+    for l in lines:
+        if l.startswith("Style: " + MASK_STYLE + ","):
+            l = "Style: " + MASK_OUT + l[len("Style: " + MASK_STYLE):]
+        elif l.startswith(("Dialogue:", "Comment:")):
+            i = _text_start(l)
+            if i > 0:
+                p = l[:i].split(",")
+                if p[3].strip() == MASK_STYLE:
+                    p[3] = MASK_OUT
+                    if p[4].strip().lower() in ("mask", "маска"):
+                        p[4] = ""
+                    l = ",".join(p) + l[i:]
+        out.append(l)
+    return out
 
 
 def prune_defaults(line):
     """drop tags that only repeat the mask style: \\an7 and \\fscx100\\fscy100 (scale not animated)"""
     i = _text_start(line)
-    if i < 0 or line[:i].split(",")[3].strip() != MASK_STYLE or not line[i:].startswith("{"):
+    if i < 0 or line[:i].split(",")[3].strip() not in MASK_STYLES or not line[i:].startswith("{"):
         return line
     j = line.find("}", i) + 1
     tags = line[i:j]
