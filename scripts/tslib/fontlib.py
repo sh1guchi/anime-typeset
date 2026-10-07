@@ -89,6 +89,20 @@ def probe_file(family, weight, italic=False):
     return p
 
 
+def mirror(paths):
+    """new library fonts also copied to "font_mirror" of ~/.anime-typeset.json (a folder or a list: e.g. the
+    player's fonts folder), unless a file of that name is there already"""
+    import shutil
+    dirs = _cfg().get("font_mirror") or []
+    for d in ([dirs] if isinstance(dirs, str) else dirs):
+        if not os.path.isdir(d):
+            continue
+        for p in paths:
+            dst = os.path.join(d, os.path.basename(p))
+            if not os.path.exists(dst):
+                shutil.copy2(p, dst)
+
+
 def full_file(family, weight, italic=False):
     """the whole static font of one weight, in the library (libass and the index see it at once)"""
     lib = library_dir()
@@ -99,6 +113,7 @@ def full_file(family, weight, italic=False):
             fh.write(data)
         os.replace(p + ".tmp", p)
         fonts.add_dirs([lib], force=True)
+        mirror([p])
     return p
 
 
@@ -142,6 +157,7 @@ def import_fonts(paths):
                         if n.lower().endswith(exts) and not n.startswith("__MACOSX"):
                             keep(n, z.read(n))
     fonts.add_dirs([lib], force=True)
+    mirror(list(dict.fromkeys(out)))
     recs = fonts.index()
     return [(f, [r for r in recs if os.path.abspath(r["path"]) == os.path.abspath(f)]) for f in dict.fromkeys(out)]
 
