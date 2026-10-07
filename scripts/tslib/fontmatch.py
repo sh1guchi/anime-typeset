@@ -42,7 +42,21 @@ def features(m, em):
     sm = (cv2.GaussianBlur(m.astype(np.float32), (0, 0), sig) > 0.5).astype(np.uint8)
     cs2, _ = cv2.findContours(sm, cv2.RETR_LIST, cv2.CHAIN_APPROX_NONE)
     perim2 = sum(cv2.arcLength(c, True) for c in cs2) or perim
-    return {"w": w / em, "contrast": contrast, "rough": perim / perim2, "hist": [round(float(h), 4) for h in hist]}
+    v, h = _runs(m, em, axis=1), _runs(m, em, axis=0)
+    return {"w": w / em, "contrast": contrast, "rough": perim / perim2, "hist": [round(float(x), 4) for x in hist],
+            "v": v / em, "h": h / em, "hv": v / max(h, 0.5)}
+
+
+def _runs(m, em, axis):
+    """median length of the short ink runs along rows (axis=1: = thickness of the vertical strokes) or columns
+    (axis=0: = thickness of the horizontal strokes); runs longer than 0.3 em are strokes along the scan, out"""
+    a = m if axis == 1 else m.T
+    p = np.pad(a.astype(np.int8), ((0, 0), (1, 1)))
+    d = np.diff(p, axis=1)
+    starts = np.nonzero(d == 1); ends = np.nonzero(d == -1)
+    L = ends[1] - starts[1]
+    L = L[(L >= 1) & (L < 0.3 * em)]
+    return float(np.median(L)) if len(L) else 1.0
 
 
 def original_native(video, frame, box, polarity=None, det=None):
@@ -96,6 +110,19 @@ def original(img, box, polarity=None, det=None, win=61):
         raise SystemExit(f"no {pol} glyphs found in {box}")
     em = (ys[-1] - ys[0] + 1) / 0.92                         # kanji fill ~92% of the em; one line in the box
     colour = np.median(img[y0:y1, x0:x1][keep > 0], axis=0)
+    # stroke widths at half contrast, like the crisp candidate renders thresholded at 50%: the detection mask
+    # above sits ~18 levels over the background and swallows the blur / glow skirts - thin horizontals come out
+    # thick and the stress contrast low
+    lum = img[y0:y1, x0:x1].mean(axis=2)
+    bgm = ~cv2.dilate(keep, np.ones((7, 7), np.uint8)).astype(bool)
+    if bgm.sum() > 50 and keep.sum() > 50:
+        bg = float(np.median(lum[bgm]))
+        peak = float(np.percentile(lum[keep > 0], 90 if pol == "light" else 10))
+        half = (lum > (bg + peak) / 2) if pol == "light" else (lum < (bg + peak) / 2)
+        region = cv2.dilate(keep, np.ones((5, 5), np.uint8)).astype(bool)
+        hm = (half & region).astype(np.uint8)
+        if hm.sum() > 0.3 * keep.sum():
+            keep = hm
     return keep, em, pol, colour
 
 
@@ -111,7 +138,7 @@ def _render(path, index, em, text=fontlib.SAMPLE):
 
 
 def measure(path, index, em, mtime=None):
-    key = f"v2|{path}|{index}|{int(round(em / 4)) * 4}|{mtime or os.path.getmtime(path):.0f}"
+    key = f"v3|{path}|{index}|{int(round(em / 4)) * 4}|{mtime or os.path.getmtime(path):.0f}"
     cache = _load_cache()
     if key in cache:
         return cache[key]
@@ -148,28 +175,112 @@ def _save_cache():
         os.replace(tmp, FEAT_CACHE)
 
 
-def score(f, t):
-    """lower = closer. Earth mover's distance between the stroke-width distributions (in log-width bins, x0.14
-    per bin = the bin width in ln units), mean weight, edge roughness"""
-    s = 3.0 * abs(np.log(f["w"] / t["w"])) + 2.0 * abs(np.log(f["rough"] / t["rough"]))
-    if f.get("hist") and t.get("hist"):
-        step = float(HIST_BINS[1] - HIST_BINS[0])
-        s += 3.0 * float(np.abs(np.cumsum(f["hist"]) - np.cumsum(t["hist"])).sum()) * step
-    else:
-        s += abs(np.log(f["contrast"] / t["contrast"]))
-    return s
+def _panose(path, index):
+    """category from the font's own PANOSE (OS/2): family type 3 hand-written, 4 decorative; for text faces
+    the serif style (11-15 sans / flared / rounded, 2-10 serif); None when unset"""
+    from fontTools.ttLib import TTFont, TTCollection
+    try:
+        ft = TTCollection(path, lazy=True).fonts[index] if path.lower().endswith(".ttc") else TTFont(path, lazy=True)
+        pn = ft["OS/2"].panose
+    except Exception:
+        return None
+    if pn.bFamilyType == 3:
+        return "handwriting"
+    if pn.bFamilyType == 4:
+        return "display"
+    if pn.bFamilyType == 2:
+        if pn.bProportion == 9:
+            return "monospace"
+        if pn.bSerifStyle in (11, 12, 13, 14, 15):
+            return "sans-serif"
+        if 2 <= pn.bSerifStyle <= 10:
+            return "serif"
+    return None
 
 
-def candidates(target, em, target_em, text, cats=None, online=True, italic=False, min_px=2.2, log=print):
-    """ranked faces: [{name, bold, italic, source, family, weight, score, feat, path?}] + rejected counts"""
+def classify(path, index=0):
+    """category of a face: its PANOSE when set, else from the glyphs - serif (feet on the stems of 'п'),
+    monospace (equal advances), handwriting (slanted 'l'), else sans-serif. Cached."""
+    key = f"cls4|{path}|{index}|{os.path.getmtime(path):.0f}"
+    cache = _load_cache()
+    if key in cache:
+        return cache[key]
+    cat = _panose(path, index)
+    if cat in (None, "serif", "sans-serif"):          # serif vs sans: PANOSE is often wrong (EuroStyle -> serif)
+        cat = "sans-serif"
+        try:
+            f = ImageFont.truetype(path, 200, index=index)
+
+            def mask(ch):
+                l, t_, r, b_ = f.getbbox(ch)
+                im = Image.new("L", (int(r - l + 8), int(b_ - t_ + 8)), 0)
+                ImageDraw.Draw(im).text((4 - l, 4 - t_), ch, fill=255, font=f)
+                a_ = np.asarray(im) > 127
+                ys = np.nonzero(a_.any(axis=1))[0]
+                return a_[ys[0]:ys[-1] + 1] if len(ys) else a_
+
+            def runs(row):
+                p_ = np.diff(np.r_[0, row.astype(np.int8), 0])
+                return np.nonzero(p_ == -1)[0] - np.nonzero(p_ == 1)[0]
+            pm = mask("п")
+            n = len(pm)
+            mid = [r_ for row in pm[n // 3: 2 * n // 3] for r_ in runs(row)]
+            bot = [r_ for row in pm[-max(2, n // 12):] for r_ in runs(row)]
+            stem = np.median(mid) if mid else 1.0
+            foot = np.mean(bot) if bot else stem
+            lm = mask("l")
+            rows = [np.nonzero(r_)[0].mean() for r_ in lm if r_.any()]
+            k = max(1, len(rows) // 5)
+            slant = (np.mean(rows[:k]) - np.mean(rows[-k:])) / max(1, len(rows)) if len(rows) > 4 else 0.0
+            adv = [f.getlength(c) for c in "ilmwЖ"]
+            sm, _ = _render(path, index, 120)
+            ft = features(sm, 120) or {"rough": 1.0}
+            if np.std(adv) < 0.02 * np.mean(adv):
+                cat = "monospace"
+            elif ft["rough"] > 1.3:                     # brush / distressed edges (Edo, Kashima: ~1.5)
+                cat = "display"
+            elif abs(slant) > 0.12:
+                cat = "handwriting"
+            elif foot > 1.5 * stem:
+                cat = "serif"
+        except Exception:
+            pass
+    cache[key] = cat
+    return cat
+
+
+def score(f, t, k=1.0):
+    """lower = closer: weight (thickness of the vertical stems / em; k = original em / Russian em, so the stems
+    compare in pixels on screen - Russian set smaller than the kanji needs a relatively heavier face), stress contrast (vertical / horizontal
+    stroke thickness: Mincho and antiqua ~2-3, gothic and grotesque ~1 - the cue that carries over from kanji to
+    Cyrillic), edge roughness (brush / distressed vs clean)"""
+    # the contrast is reliable on Latin / Cyrillic originals; on kana / kanji (short curved strokes) the run
+    # lengths mix the two directions and read ~1.1-1.4 for a Mincho - a light weight there
+    return (3.0 * abs(np.log(f["v"] / (t["v"] * k))) + 1.0 * abs(np.log(f["hv"] / t["hv"]))
+            + 1.5 * abs(np.log(f["rough"] / t["rough"])))
+
+
+def candidates(target, em, target_em, text, cats=None, online=True, italic=False, min_px=1.8, log=print,
+               orig_em=None):
+    """ranked faces: [{name, bold, italic, source, family, weight, score, feat, path?}] + rejected counts.
+    em: the original's em in the measured image, target_em / orig_em: Russian / original em on screen"""
+    k = orig_em / target_em if orig_em else 1.0
     pool = []
     seen_fam = set()
+    try:
+        catmap = {c["family"].lower(): c["category"] for c in fontlib.catalog()}
+    except Exception:
+        catmap = {}
     for r in fonts.index():                       # installed (and already downloaded) faces
         if not r["cyr"] or not r["family"] or r["italic"] != italic:
             continue
         seen_fam.add((r["tfamily"] or r["family"]).lower())
-        pool.append({"source": "installed", "path": r["path"], "index": r["index"], "family": r["tfamily"] or r["family"],
-                     "weight": r["weight"], "cat": None, "rec": r})
+        fam = r["tfamily"] or r["family"]
+        c_ = catmap.get(fam.lower()) or catmap.get(fam.lower().rsplit(" ", 1)[0]) or classify(r["path"], r["index"])
+        if cats and c_ not in cats:
+            continue
+        pool.append({"source": "installed", "path": r["path"], "index": r["index"], "family": fam,
+                     "weight": r["weight"], "cat": c_, "rec": r})
     if online:
         try:
             cat = fontlib.catalog()
@@ -199,12 +310,12 @@ def candidates(target, em, target_em, text, cats=None, online=True, italic=False
             rej["unreadable"] += 1; continue
         if f["adv"] > 0.8:
             rej["full-width"] += 1; continue
-        if f["w"] * target_em < min_px:
+        if f.get("v", f["w"]) * target_em < min_px:
             rej["thin"] += 1; continue
         if p["source"] == "installed":
             if fonts.missing_glyphs(p["rec"], "".join(need)):
                 rej["missing letters"] += 1; continue
-        out.append(dict(p, feat=f, score=score(f, target)))
+        out.append(dict(p, feat=f, score=score(f, target, k)))
     _save_cache()
     out.sort(key=lambda c: c["score"])
     uniq, fams = [], set()
@@ -220,7 +331,7 @@ def candidates(target, em, target_em, text, cats=None, online=True, italic=False
 
 def resolve(c, italic=False):
     """download (online) and name the face as a script will: fills c['name'], c['bold'], c['file']"""
-    if c["source"] != "installed":
+    if "rec" not in c:                            # online: not in the library yet
         c["file"] = fontlib.full_file(c["family"], c["weight"], italic)
         c["name"], c["bold"], c["italic"] = fontlib.ass_face(c["file"])
     else:
@@ -231,6 +342,47 @@ def resolve(c, italic=False):
         c["name"] = r["family"]
         c["bold"] = bool(r["bold"])
     return c
+
+
+def picked(name, target, em, target_em, text, k=1.0, italic=False, min_px=1.8, bold=None, src="with"):
+    """a face chosen by hand, measured like the ranked ones: name 'Family' / 'Family:700', or a style's
+    (name, bold=flag) taken as it is. Installed family -> its weight closest to the original, else a Google
+    family -> its best weight. None when neither has it; c['warn'] = what candidates() would have rejected"""
+    fam, _, w = name.partition(":")
+    fam, w = fam.strip(), int(w) if w.strip().isdigit() else None
+    need = "".join({c for c in text if not c.isspace()})
+    if bold is not None:
+        r = fonts.lookup(fam, bold, italic)
+        recs = [r] if r else []
+    else:
+        recs = [r for r in fonts.index() if r["italic"] == italic and r["family"]
+                and fam.lower() in (r["family"].lower(), (r["tfamily"] or "").lower())]
+        if w is not None and recs:
+            recs = [min(recs, key=lambda r: abs(r["weight"] - w))]
+    opts = [{"source": src, "path": r["path"], "index": r["index"], "family": r["tfamily"] or r["family"],
+             "weight": r["weight"], "rec": r} for r in recs]
+    if not opts:
+        c = next((c for c in fontlib.catalog() if c["family"].lower() == fam.lower()), None)
+        if c is None:
+            return None
+        for w_ in ([w] if w else c["weights"]):
+            try:
+                opts.append({"source": src + " (Google Fonts)", "path": fontlib.probe_file(c["family"], w_, italic),
+                             "index": 0, "family": c["family"], "weight": w_, "cat": c["category"]})
+            except Exception:
+                pass
+    best = None
+    for o in opts:
+        f = measure(o["path"], o["index"], em)
+        if f:
+            o.update(feat=f, score=score(f, target, k))
+            best = o if best is None or o["score"] < best["score"] else best
+    if best is None:
+        return None
+    f = best["feat"]
+    best["warn"] = ([f"thin ({f.get('v', f['w']) * target_em:.1f}px)"] if f.get("v", f["w"]) * target_em < min_px else [])         + (["full-width"] if f["adv"] > 0.8 else [])         + (["missing letters"] if "rec" in best and fonts.missing_glyphs(best["rec"], need) else [])
+    _save_cache()
+    return best
 
 
 def sheet(video, frame, crop, cands, text, pos, em, colour, outline, bord, out, workdir, orig_label="original",
@@ -263,7 +415,8 @@ def sheet(video, frame, crop, cands, text, pos, em, colour, outline, bord, out, 
         else:
             write_lines(p, header("fonts", (coords.AW, coords.AH), video.ycbcr, [st]) + [ev])
         lab = (f"{i + 1}. {c['name']}{' Bold' if c['bold'] else ''}  [{c['source']}"
-               + (f", {c['cat']}" if c.get('cat') else "") + f"]  score {c['score']:.2f}")
+               + (f", {c['cat']}" if c.get('cat') else "") + f"]  score {c['score']:.2f}"
+               + (f"  ! {', '.join(c['warn'])}" if c.get("warn") else ""))
         jobs.append((lab, p, i))
 
     def one(j):

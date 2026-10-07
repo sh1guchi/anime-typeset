@@ -309,10 +309,33 @@ def _item_text(it):
         v = it.get(k)
         for s in (v if isinstance(v, list) else [v]):
             if isinstance(s, dict) and s.get("text"):
-                return s["text"].replace("\\N", " ")
+                return s["text"]                     # \N kept: the sheet shows the lines as the sign has them
     for c in it.get("cards", []):
         return c.get("name", "")
     return it.get("name", "")
+
+
+def _item_fonts(ctx, it):
+    """(family, bold) of the styles the item's text is set in now (its specs' style / preset layers)"""
+    specs = []
+    for k in ("text", "texts", "plain"):
+        v = it.get(k)
+        specs += [s for s in (v if isinstance(v, list) else [v]) if isinstance(s, dict) and s.get("text")]
+    names = []
+    for s in specs:
+        lay = s.get("layers") or (ctx.preset.get(s.get("preset", "sign")) or {}).get("layers") or []
+        names.append(s.get("style") or (lay[-1]["style"] if lay else None))
+    if it.get("cards"):
+        lay = (ctx.preset.get("card") or {}).get("layers") or []
+        names.append(lay[-1]["style"] if lay else None)
+    out = []
+    for n in names:
+        if n and n in ctx.styles.lines:
+            d = ctx.styles.get(n)
+            fb = (d["Fontname"], d["Bold"] not in ("0", ""))
+            if fb not in out:
+                out.append(fb)
+    return out
 
 
 def cmd_fonts_match(a):
@@ -349,23 +372,40 @@ def cmd_fonts_match(a):
     ref = _f.lookup("Arial") or (_f.index()[0] if _f.index() else None)
     em = a.em or 0.78 * em0
     if not a.em and ref is not None:
-        tw = _f.text_width(ref, text, em)
+        tw = max(_f.text_width(ref, part, em) for part in text.split("\\N"))
         if tw > 1.1 * ink_w:
             em *= 1.1 * ink_w / tw
-    print(f"original: {pol} text, em {em0:.0f} px, stroke {target['w'] * em0:.1f} px ({target['w']:.3f} em), "
-          f"contrast {target['contrast']:.2f}, roughness {target['rough']:.3f}; Russian at em {em:.0f}")
+    print(f"original: {pol} text, em {em0:.0f} px, stems {target['v'] * em0:.1f} px (the Russian stems are "
+          f"matched to it in px), stress contrast "
+          f"(vertical / horizontal) {target['hv']:.2f}, roughness {target['rough']:.3f}; Russian at em {em:.0f}")
     cands, rej = fontmatch.candidates(target, em_n, em, text, cats=cats, online=not a.offline, italic=a.italic,
-                                      min_px=a.min_px)
+                                      min_px=a.min_px, orig_em=em0)
     print("  rejected: " + ", ".join(f"{k} {n}" for k, n in rej.items() if n))
-    top = cands[:a.top]
+    # the faces the item uses now (preset styles) and the ones named with --with (by eye, by genre - references/
+    # fonts.md) go first on the sheet, whatever they score: the strokes don't measure character (BC title: Moyenage)
+    cur = [(fam, b, "current") for fam, b in (_item_fonts(ctx, it) if it else [])]
+    cur += [(f.strip(), None, "with") for f in (a.with_ or "").split(",") if f.strip()]
+    pinned = []
+    for fam, b, src in cur:
+        c = fontmatch.picked(fam, target, em_n, em, text, em0 / em, a.italic, a.min_px, bold=b, src=src)
+        if c is None:
+            print(f"  {src} {fam}: neither installed nor in the Google catalog")
+            continue
+        print(f"  {src} {fam}: score {c['score']:.2f} - would rank #{1 + sum(x['score'] < c['score'] for x in cands)}"
+              f" of {len(cands)}" + (f" ! {', '.join(c['warn'])}" if c["warn"] else ""))
+        pinned.append(c)
+    roots = {p["family"].lower().split()[0] for p in pinned}
+    top = pinned + [c for c in cands if c["family"].lower().split()[0] not in roots][:a.top]
     for c in top:
         fontmatch.resolve(c, a.italic)
     for i, c in enumerate(top, 1):
         f = c["feat"]
         print(f"  {i}. {c['name']}{' (bold)' if c['bold'] else ''}  [{c['source']}{', ' + c['cat'] if c.get('cat') else ''}]"
-              f"  score {c['score']:.2f}  stroke {f['w'] * em:.1f}px contrast {f['contrast']:.2f} rough {f['rough']:.3f}")
-    if len(top) > 1 and top[1]["score"] - top[0]["score"] < 0.15:
-        print("  the best ones are close - show the sheet to the user and ask (SKILL.md, font choice)")
+              f"  score {c['score']:.2f}  stems {f['v'] * em:.1f}px contrast {f['hv']:.2f} rough {f['rough']:.3f}")
+    ranked = [c for c in top if c not in pinned]
+    if pinned or (len(ranked) > 1 and ranked[1]["score"] - ranked[0]["score"] < 0.15):
+        print("  " + ("the current face is on the sheet first - compare it with the ranked ones by eye" if pinned
+                      else "the best ones are close") + " - show the sheet to the user and ask (SKILL.md, font choice)")
     colour = a.colour or "&H00{:02X}{:02X}{:02X}&".format(*[int(round(x)) for x in col[::-1]])
     x0, y0, x1, y1 = box
     if len(xs):                                       # baseline: kanji sit ~0.12 em below it
@@ -719,8 +759,10 @@ def main():
     p.add_argument("--box", help="x0,y0,x1,y1 around one line of the original text (default: the item's first zone)")
     p.add_argument("--polarity", choices=("light", "dark")); p.add_argument("--category", help="serif,sans-serif,display,handwriting")
     p.add_argument("--top", type=int, default=8); p.add_argument("--offline", action="store_true", help="installed fonts only")
-    p.add_argument("--italic", action="store_true"); p.add_argument("--min-px", type=float, default=2.2,
+    p.add_argument("--italic", action="store_true"); p.add_argument("--min-px", type=float, default=1.8,
                                                                     help="thinnest acceptable stroke at the real size (1080p px)")
+    p.add_argument("--with", dest="with_", help="'Family[:weight],...' picked by eye (installed or Google): shown first "
+                   "on the sheet after the item's current face, scored and flagged but never filtered out")
     p.add_argument("--json", help="write the ranked candidates here")
     p.add_argument("--get", help="'Family[:weight]' - download a Google font into the library")
     p.set_defaults(fn=cmd_fonts)
