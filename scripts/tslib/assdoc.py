@@ -143,17 +143,26 @@ def release_fonts(out_path, styles, events):
     for l in styles:
         d = parse_style(l)
         if d["Name"] in used:
-            faces.add((d["Fontname"].lstrip("@"), d["Bold"] not in ("0", 0)))
+            it = d["Italic"] not in ("0", 0)
+            faces.add((d["Fontname"].lstrip("@"), d["Bold"] not in ("0", 0), it))
             for fn in used[d["Name"]]:
-                faces.add((fn, d["Bold"] not in ("0", 0)))
+                faces.add((fn, d["Bold"] not in ("0", 0), it))
     out_dir = os.path.join(os.path.dirname(os.path.abspath(out_path)), "шрифты")
-    copied, missing = [], []
-    for fam, bold in sorted(faces):
-        recs = [r for r in fonts.index() if fam.lower() in (r["family"].lower(), r["tfamily"].lower(), r["full"].lower())]
+    copied, missing, clash = [], [], []
+    for fam, bold, ital in sorted(faces):
+        recs = [r for r in fonts.index() if fam.lower() in (r["family"].lower(), r["tfamily"].lower(),
+                                                            r["full"].lower(), r.get("ps", "").lower())]
         if not recs:
             missing.append(fam); continue
         want = [r for r in recs if r["bold"] == bold] or recs           # the face libass picks, plus its family's
-        for r in {r["path"]: r for r in want}.values():                 # other face if the script fakes bold
+        want = [r for r in want if r["italic"] == ital] or want         # other face if the script fakes bold
+        # another font of the same name without Cyrillic (Windows' calligr0.ttf is 'Calligrapher' too): ship only
+        # the Cyrillic one, one file per face, and say so - a player that prefers system fonts may take the other
+        cyr = [r for r in want if r.get("cyr")]
+        if cyr and len(cyr) < len(want):
+            clash.append(f"{fam} ({', '.join(sorted({os.path.basename(r['path']) for r in want if not r.get('cyr')}))})")
+        want = list({(r["weight"], r["italic"]): r for r in reversed(cyr or want)}.values())
+        for r in want:
             os.makedirs(out_dir, exist_ok=True)
             dst = os.path.join(out_dir, os.path.basename(r["path"]))
             if not os.path.exists(dst) or os.path.getsize(dst) != os.path.getsize(r["path"]):
@@ -163,6 +172,8 @@ def release_fonts(out_path, styles, events):
         print(f"  fonts for the release: {out_dir} <- {', '.join(sorted(set(copied)))}")
     if missing:
         print(f"  fonts NOT found (install or download them, then assemble again): {', '.join(missing)}")
+    if clash:
+        print(f"  same name, no Cyrillic, left out (the release ships the Cyrillic one): {'; '.join(clash)}")
 
 
 def event_key(line):
